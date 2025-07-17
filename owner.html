@@ -174,6 +174,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-wrap: wrap;
     }
     .filter-bar label {
       font-weight: bold;
@@ -186,16 +187,23 @@
       font-size: 1rem;
       flex: 0 0 auto;
     }
+    #ordersCount {
+      font-weight: bold;
+      color: var(--primary);
+      padding: 6px 10px;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      background: #f0f0f0;
+      user-select: none;
+    }
   </style>
 </head>
 <body>
   <header class="wood-header">🌿 Wooden Garden – Owner Panel</header>
-
   <div id="totalSales" class="section active">
     <h2>💲 Today's Total Sales</h2>
     <p id="sales-summary">Loading...</p>
   </div>
-
   <div id="orderHistory" class="section">
     <h2>📖 Order History (Today)</h2>
     <div class="filter-bar">
@@ -203,10 +211,10 @@
       <input type="date" id="filterDate" />
       <button id="filterBtn">Filter</button>
       <button id="clearFilterBtn">Clear</button>
+      <span id="ordersCount">Completed Orders: 0</span>
     </div>
     <div id="orders"></div>
   </div>
-
   <div id="addItems" class="section">
     <h2>✏️ Add New Menu Item</h2>
     <form id="add-menu-form">
@@ -216,12 +224,10 @@
       <button type="submit">Add Item</button>
     </form>
   </div>
-
   <div id="salesHistory" class="section">
     <h2>📅📊 Sales History</h2>
     <div id="sales-history">Coming soon...</div>
   </div>
-
   <nav class="nav-bar">
     <button class="nav-button active" data-section="totalSales">💲<br>Sales</button>
     <button class="nav-button" data-section="orderHistory">📖<br>Orders</button>
@@ -229,7 +235,6 @@
     <button class="nav-button" data-section="salesHistory">📅<br>History</button>
     <button class="nav-button" id="logoutBtn">⏏️<br>Logout</button>
   </nav>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
     import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
@@ -260,6 +265,7 @@
     const navButtons = document.querySelectorAll('.nav-button');
     const salesSummary = document.getElementById('sales-summary');
     const ordersDiv = document.getElementById('orders');
+    const ordersCountSpan = document.getElementById('ordersCount');
     let menuDiv = document.getElementById('menu');
     const salesHistoryDiv = document.getElementById('sales-history');
 
@@ -277,7 +283,7 @@
       });
     });
 
-    const ordersRef = ref(db, 'orders');
+    const ordersRef = ref(db, 'completedOrders');
     const menuRef = ref(db, 'menu');
 
     function formatDate(date) {
@@ -291,6 +297,7 @@
       onValue(ordersRef, snapshot => {
         const data = snapshot.val() || {};
         let totalSales = 0;
+        let totalOrdersCount = 0;
         ordersDiv.innerHTML = '';
 
         const todayStr = filterDate || formatDate(new Date());
@@ -301,27 +308,60 @@
           const orderDateStr = formatDate(orderDate);
 
           if (orderDateStr === todayStr) {
-            // ** Fix only name here, keep your price logic same **
-            const itemName = order.name ?? order.itemName ?? order.item ?? "Unknown Item";
+            totalOrdersCount++;
 
-            totalSales += Number(order.price);
+            let totalOrderPrice = 0;
 
-            const quantity = order.quantity || 1;
+            if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+              order.items.forEach(item => {
+                const qty = Number(item.quantity) || 1;
+                const price = Number(item.price) || 0;
+                totalOrderPrice += price * qty;
+              });
+            } else {
+              const qty = Number(order.quantity) || 1;
+              const price = Number(order.price) || 0;
+              totalOrderPrice += price * qty;
+            }
+
+            totalSales += totalOrderPrice;
+
+            // Show orders in history section as before:
+            let itemsHtml = '';
+            if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+              order.items.forEach(item => {
+                const itemTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1);
+                itemsHtml += `
+                  <div>
+                    <strong>${item.name || 'Unnamed Item'}</strong> - Qty: ${item.quantity || 1} | Unit Price: Rs. ${Number(item.price).toFixed(2)} | Total: Rs. ${itemTotal.toFixed(2)}
+                  </div>
+                `;
+              });
+            } else {
+              itemsHtml = `
+                <div>
+                  <strong>${order.name || order.itemName || order.item || 'Unknown Item'}</strong> - Qty: ${order.quantity || 1} | Unit Price: Rs. ${(totalOrderPrice / (order.quantity || 1)).toFixed(2)} | Total: Rs. ${totalOrderPrice.toFixed(2)}
+                </div>
+              `;
+            }
 
             const div = document.createElement('div');
             div.className = 'order-entry';
             div.innerHTML = `
-              <h4>${itemName}</h4>
+              <h4>Order ID: ${id}</h4>
               <div class="order-details">
-                Quantity: ${quantity} &nbsp;&nbsp;|&nbsp;&nbsp; Price/unit: Rs. ${order.price / quantity}<br/>
-                Total: Rs. ${order.price}<br/>
+                ${itemsHtml}
+                <hr />
+                <div><strong>Order Total:</strong> Rs. ${totalOrderPrice.toFixed(2)}</div>
                 <small>${orderDate.toLocaleString()}</small>
               </div>
             `;
             ordersDiv.prepend(div);
           }
         }
-        salesSummary.innerText = `Rs. ${totalSales} (from orders on ${todayStr})`;
+
+        salesSummary.innerText = `Rs. ${totalSales.toFixed(2)} (from ${totalOrdersCount} completed order${totalOrdersCount !== 1 ? 's' : ''} on ${todayStr})`;
+        ordersCountSpan.innerText = `Completed Orders: ${totalOrdersCount}`;
       });
     }
 
@@ -400,26 +440,22 @@
 
     document.getElementById('add-menu-form').onsubmit = e => {
       e.preventDefault();
-      const nameInput = document.getElementById('new-name');
-      const priceInput = document.getElementById('new-price');
-      const categoryInput = document.getElementById('new-category');
-      const name = nameInput.value.trim();
-      const price = parseFloat(priceInput.value);
-      const category = categoryInput.value.trim();
+      const name = document.getElementById('new-name').value.trim();
+      const price = parseFloat(document.getElementById('new-price').value);
+      const category = document.getElementById('new-category').value.trim();
+
       if (!name || isNaN(price) || !category) {
         alert('Please fill all fields correctly.');
         return;
       }
+
       push(menuRef, { name, price, category })
         .then(() => {
-          alert('Added new menu item!');
-          nameInput.value = '';
-          priceInput.value = '';
-          categoryInput.value = '';
-          loadMenu();
+          alert('Menu item added successfully!');
+          e.target.reset();
         })
-        .catch(e => alert('Failed to add: ' + e.message));
+        .catch(err => alert('Failed to add item: ' + err.message));
     };
   </script>
 </body>
-  </html>
+</html>
