@@ -96,79 +96,6 @@
       color: #555;
       margin-top: 6px;
     }
-    .menu-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
-      margin-top: 12px;
-    }
-    .menu-card {
-      background: var(--white);
-      border-radius: 10px;
-      padding: 12px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      user-select: none;
-    }
-    .menu-card input {
-      width: 100%;
-      padding: 6px;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      box-sizing: border-box;
-    }
-    .menu-card button {
-      width: 48%;
-      padding: 6px 0;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background-color 0.25s ease;
-    }
-    .menu-card .save-btn {
-      background: var(--accent);
-      color: #fff;
-    }
-    .menu-card .save-btn:hover {
-      background: #7cb342;
-    }
-    .menu-card .delete-btn {
-      background: #e53935;
-      color: #fff;
-    }
-    .menu-card .delete-btn:hover {
-      background: #c62828;
-    }
-    #add-menu-form {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 8px;
-    }
-    #add-menu-form input {
-      flex: 1 1 150px;
-      padding: 8px;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-    }
-    #add-menu-form button {
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      flex: 0 0 auto;
-    }
-    #add-menu-form button:hover {
-      background: #4e342e;
-    }
     .filter-bar {
       margin-bottom: 10px;
       display: flex;
@@ -196,6 +123,19 @@
       background: #f0f0f0;
       user-select: none;
     }
+    #deleteOrdersDayBtn {
+      background: #e53935;
+      color: #fff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      flex: 0 0 auto;
+    }
+    #deleteOrdersDayBtn:hover {
+      background: #c62828;
+    }
   </style>
 </head>
 <body>
@@ -211,22 +151,10 @@
       <input type="date" id="filterDate" />
       <button id="filterBtn">Filter</button>
       <button id="clearFilterBtn">Clear</button>
+      <button id="deleteOrdersDayBtn">Delete Orders of Selected Day</button>
       <span id="ordersCount">Completed Orders: 0</span>
     </div>
     <div id="orders"></div>
-  </div>
-  <div id="addItems" class="section">
-    <h2>✏️ Add New Menu Item</h2>
-    <form id="add-menu-form">
-      <input type="text" id="new-name" placeholder="Item Name" required />
-      <input type="number" id="new-price" placeholder="Price (Rs.)" required min="0" />
-      <input type="text" id="new-category" placeholder="Category" required />
-      <button type="submit">Add Item</button>
-    </form>
-  </div>
-  <div id="salesHistory" class="section">
-    <h2>📅📊 Sales History</h2>
-    <div id="sales-history">Coming soon...</div>
   </div>
   <nav class="nav-bar">
     <button class="nav-button active" data-section="totalSales">💲<br>Sales</button>
@@ -237,7 +165,7 @@
   </nav>
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getDatabase, ref, onValue, push, update, remove } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    import { getDatabase, ref, onValue, get, update } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
     const firebaseConfig = {
@@ -266,8 +194,6 @@
     const salesSummary = document.getElementById('sales-summary');
     const ordersDiv = document.getElementById('orders');
     const ordersCountSpan = document.getElementById('ordersCount');
-    let menuDiv = document.getElementById('menu');
-    const salesHistoryDiv = document.getElementById('sales-history');
 
     navButtons.forEach(button => {
       button.addEventListener('click', () => {
@@ -284,7 +210,6 @@
     });
 
     const ordersRef = ref(db, 'completedOrders');
-    const menuRef = ref(db, 'menu');
 
     function formatDate(date) {
       const y = date.getFullYear();
@@ -293,9 +218,12 @@
       return `${y}-${m}-${d}`;
     }
 
-    function loadSalesAndOrders(filterDate) {
-      onValue(ordersRef, snapshot => {
+    // Load and display orders & sales for a date (default today)
+    async function loadSalesAndOrders(filterDate) {
+      try {
+        const snapshot = await get(ordersRef);
         const data = snapshot.val() || {};
+
         let totalSales = 0;
         let totalOrdersCount = 0;
         ordersDiv.innerHTML = '';
@@ -304,6 +232,7 @@
 
         for (const id in data) {
           const order = data[id];
+          if (!order.timestamp) continue;
           const orderDate = new Date(order.timestamp);
           const orderDateStr = formatDate(orderDate);
 
@@ -326,7 +255,7 @@
 
             totalSales += totalOrderPrice;
 
-            // Show orders in history section as before:
+            // Build order display
             let itemsHtml = '';
             if (order.items && Array.isArray(order.items) && order.items.length > 0) {
               order.items.forEach(item => {
@@ -362,7 +291,12 @@
 
         salesSummary.innerText = `Rs. ${totalSales.toFixed(2)} (from ${totalOrdersCount} completed order${totalOrdersCount !== 1 ? 's' : ''} on ${todayStr})`;
         ordersCountSpan.innerText = `Completed Orders: ${totalOrdersCount}`;
-      });
+      } catch (error) {
+        console.error('Error loading orders:', error);
+        salesSummary.innerText = 'Failed to load sales data.';
+        ordersDiv.innerHTML = '<p>Error loading orders.</p>';
+        ordersCountSpan.innerText = 'Completed Orders: 0';
+      }
     }
 
     loadSalesAndOrders();
@@ -381,81 +315,44 @@
       loadSalesAndOrders();
     });
 
-    function loadMenu() {
-      onValue(menuRef, snapshot => {
-        const data = snapshot.val() || {};
-        let menuHTML = '';
-        for (const id in data) {
-          const item = data[id];
-          menuHTML += `
-            <div class="menu-card" data-id="${id}">
-              <input type="text" class="menu-name" value="${item.name}" placeholder="Name" />
-              <input type="number" class="menu-price" value="${item.price}" min="0" placeholder="Price" />
-              <input type="text" class="menu-category" value="${item.category}" placeholder="Category" />
-              <div style="display:flex; gap:8px; justify-content:center; margin-top:6px;">
-                <button class="save-btn">Save</button>
-                <button class="delete-btn" style="background:#e53935; color:#fff;">Delete</button>
-              </div>
-            </div>
-          `;
-        }
-        if (!menuDiv) {
-          menuDiv = document.createElement('div');
-          menuDiv.id = 'menu';
-          document.getElementById('addItems').appendChild(menuDiv);
-        }
-        menuDiv.innerHTML = menuHTML;
-
-        menuDiv.querySelectorAll('.save-btn').forEach(btn => {
-          btn.onclick = () => {
-            const card = btn.closest('.menu-card');
-            const id = card.dataset.id;
-            const name = card.querySelector('.menu-name').value.trim();
-            const price = parseFloat(card.querySelector('.menu-price').value);
-            const category = card.querySelector('.menu-category').value.trim();
-            if (!name || isNaN(price) || !category) {
-              alert('Please fill all fields correctly.');
-              return;
-            }
-            update(ref(db, `menu/${id}`), { name, price, category })
-              .then(() => alert('Updated successfully'))
-              .catch(e => alert('Update failed: ' + e.message));
-          };
-        });
-
-        menuDiv.querySelectorAll('.delete-btn').forEach(btn => {
-          btn.onclick = () => {
-            const card = btn.closest('.menu-card');
-            const id = card.dataset.id;
-            if (confirm('Are you sure you want to delete this item?')) {
-              remove(ref(db, `menu/${id}`))
-                .catch(e => alert('Delete failed: ' + e.message));
-            }
-          };
-        });
-      });
-    }
-
-    loadMenu();
-
-    document.getElementById('add-menu-form').onsubmit = e => {
-      e.preventDefault();
-      const name = document.getElementById('new-name').value.trim();
-      const price = parseFloat(document.getElementById('new-price').value);
-      const category = document.getElementById('new-category').value.trim();
-
-      if (!name || isNaN(price) || !category) {
-        alert('Please fill all fields correctly.');
+    // Delete orders of selected day
+    document.getElementById('deleteOrdersDayBtn').addEventListener('click', async () => {
+      const selectedDate = document.getElementById('filterDate').value;
+      if (!selectedDate) {
+        alert('Please select a date first to delete orders.');
+        return;
+      }
+      if (!confirm(`Are you sure you want to DELETE ALL orders of ${selectedDate}? This action cannot be undone.`)) {
         return;
       }
 
-      push(menuRef, { name, price, category })
-        .then(() => {
-          alert('Menu item added successfully!');
-          e.target.reset();
-        })
-        .catch(err => alert('Failed to add item: ' + err.message));
-    };
+      try {
+        const snapshot = await get(ordersRef);
+        const data = snapshot.val() || {};
+        const updates = {};
+
+        for (const id in data) {
+          const order = data[id];
+          if (!order.timestamp) continue;
+          const orderDateStr = new Date(order.timestamp).toISOString().slice(0, 10);
+          if (orderDateStr === selectedDate) {
+            updates[id] = null; // mark for deletion
+          }
+        }
+
+        if (Object.keys(updates).length === 0) {
+          alert('No orders found for the selected date.');
+          return;
+        }
+
+        await update(ordersRef, updates);
+        alert('Orders deleted successfully.');
+        loadSalesAndOrders(selectedDate);
+      } catch (err) {
+        console.error('Error deleting orders:', err);
+        alert('Failed to delete orders.');
+      }
+    });
   </script>
 </body>
 </html>
