@@ -1,91 +1,77 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Kitchen Dashboard</title>
+  <meta charset="UTF-8">
+  <title>Kitchen Dashboard – Wooden Garden</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #f2f2f2;
-      padding: 0;
+      font-family: "Segoe UI", sans-serif;
+      background: #f5f5f5;
       margin: 0;
+      padding: 20px;
     }
 
-    header {
-      background-color: #5d4037;
-      color: white;
-      padding: 1rem;
+    h1 {
+      color: #4e342e;
       text-align: center;
-      font-size: 1.4rem;
-    }
-
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.5rem 1rem;
-      background: #fff;
-      border-bottom: 1px solid #ddd;
-    }
-
-    #logout {
-      background: #8bc34a;
-      color: #fff;
-      border: none;
-      padding: 8px 14px;
-      cursor: pointer;
-      border-radius: 5px;
-      font-size: 14px;
+      margin-bottom: 20px;
     }
 
     #orders {
-      padding: 1rem;
       display: flex;
       flex-direction: column;
-      gap: 1rem;
+      gap: 12px;
     }
 
-    .order {
+    .order-card {
       background: white;
-      border-left: 6px solid #ccc;
-      padding: 1rem;
       border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+      padding: 15px;
+      border-left: 5px solid #8bc34a;
     }
 
-    .order.pending { border-color: gray; }
-    .order.processing { border-color: orange; }
-    .order.completed { border-color: green; }
-
-    .order small {
-      color: #555;
+    .order-header {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 4px;
     }
 
-    .status-buttons {
-      margin-top: 0.5rem;
+    .order-info {
+      margin-bottom: 8px;
+      color: #333;
     }
 
     .status-buttons button {
-      margin-right: 5px;
-      padding: 6px 10px;
+      margin-right: 6px;
+      padding: 5px 10px;
+      font-size: 13px;
       border: none;
-      border-radius: 5px;
+      border-radius: 4px;
       cursor: pointer;
     }
 
-    .status-pending { background: gray; color: white; }
-    .status-processing { background: orange; color: white; }
-    .status-completed { background: green; color: white; }
+    .pending { background: #ffcc80; }
+    .processing { background: #81d4fa; }
+    .completed { background: #aed581; }
+
+    #logout {
+      position: fixed;
+      top: 15px;
+      right: 20px;
+      background: #5d4037;
+      color: #fff;
+      padding: 8px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-  <header>👨‍🍳 Kitchen Orders</header>
-
-  <div class="top-bar">
-    <div>🍽 Orders Queue</div>
-    <button id="logout">Logout</button>
-  </div>
+  <h1>👨‍🍳 Kitchen Dashboard</h1>
+  <button id="logout">Logout</button>
 
   <div id="orders"></div>
 
@@ -95,9 +81,8 @@
       getDatabase,
       ref,
       onChildAdded,
-      update,
-      remove,
-      set
+      set,
+      remove
     } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
     import {
       getAuth,
@@ -105,16 +90,14 @@
       signOut
     } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
-    // ✅ Your actual config
     const firebaseConfig = {
       apiKey: "AIzaSyATGDe4NI75RSny4ZbE3WDtaUoUivjv3E8",
       authDomain: "digital-menu-wooden.firebaseapp.com",
       databaseURL: "https://digital-menu-wooden-default-rtdb.firebaseio.com",
       projectId: "digital-menu-wooden",
-      storageBucket: "digital-menu-wooden.appspot.com",
+      storageBucket: "digital-menu-wooden.firebasestorage.app",
       messagingSenderId: "776717051891",
-      appId: "1:776717051891:web:c52bc347ba84434e839486",
-      measurementId: "G-12S0DC6EMT"
+      appId: "1:776717051891:web:c52bc347ba84434e839486"
     };
 
     const app = initializeApp(firebaseConfig);
@@ -122,89 +105,60 @@
     const auth = getAuth();
 
     const ordersRef = ref(db, 'orders');
+    const completedRef = ref(db, 'completedOrders');
+
     const ordersDiv = document.getElementById('orders');
-    const orderMap = {};
+    const logoutBtn = document.getElementById('logout');
 
-    // 🔐 Auth check
+    logoutBtn.addEventListener('click', () => {
+      signOut(auth).then(() => {
+        window.location.href = 'login.html';
+      });
+    });
+
     onAuthStateChanged(auth, (user) => {
-      if (!user) window.location.href = "login.html";
+      if (!user) {
+        window.location.href = "login.html";
+      }
     });
 
-    // 🚪 Logout
-    document.getElementById('logout').addEventListener('click', () => {
-      signOut(auth).then(() => window.location.href = 'login.html');
-    });
+    // Listen for new orders
+    onChildAdded(ordersRef, (snapshot) => {
+      const order = snapshot.val();
+      const key = snapshot.key;
 
-    function createOrderCard(orderId, order) {
       const div = document.createElement('div');
-      div.className = `order ${order.status || 'pending'}`;
-      div.id = orderId;
+      div.className = 'order-card';
 
-      const timeAgo = timeSince(order.timestamp || Date.now());
+      const time = new Date(order.timestamp).toLocaleTimeString();
 
       div.innerHTML = `
-        <strong>${order.name}</strong><br>
-        Rs. ${order.price}<br>
-        ${order.tableNumber ? `<small>🪑 Table ${order.tableNumber}</small><br>` : ''}
-        <small>⏱ ${timeAgo} ago</small>
+        <div class="order-header">${order.name} – Table ${order.table || 'N/A'}</div>
+        <div class="order-info">Rs. ${order.price}</div>
+        <div class="order-info">🕒 ${time}</div>
         <div class="status-buttons">
-          <button class="status-pending">Pending</button>
-          <button class="status-processing">Processing</button>
-          <button class="status-completed">Completed</button>
+          <button class="pending">Pending</button>
+          <button class="processing">Processing</button>
+          <button class="completed">Completed</button>
         </div>
       `;
 
-      const [btnPending, btnProcessing, btnCompleted] = div.querySelectorAll('button');
-
-      btnPending.addEventListener('click', () => {
-        update(ref(db, `orders/${orderId}`), { status: 'pending' });
-        updateUI(orderId, 'pending');
+      const buttons = div.querySelectorAll('.status-buttons button');
+      buttons[0].addEventListener('click', () => {
+        div.style.borderLeft = '5px solid #ffcc80';
+      });
+      buttons[1].addEventListener('click', () => {
+        div.style.borderLeft = '5px solid #81d4fa';
+      });
+      buttons[2].addEventListener('click', async () => {
+        // Move to completedOrders
+        await set(ref(db, `completedOrders/${key}`), order);
+        await remove(ref(db, `orders/${key}`));
+        div.remove(); // Remove from UI
       });
 
-      btnProcessing.addEventListener('click', () => {
-        update(ref(db, `orders/${orderId}`), { status: 'processing' });
-        updateUI(orderId, 'processing');
-      });
-
-      btnCompleted.addEventListener('click', async () => {
-        const completedRef = ref(db, `completedOrders/${orderId}`);
-        await set(completedRef, { ...order, status: 'completed' });
-        await remove(ref(db, `orders/${orderId}`));
-        document.getElementById(orderId)?.remove();
-      });
-
-      return div;
-    }
-
-    function updateUI(orderId, newStatus) {
-      const card = document.getElementById(orderId);
-      if (card) card.className = `order ${newStatus}`;
-    }
-
-    function timeSince(timestamp) {
-      const seconds = Math.floor((Date.now() - timestamp) / 1000);
-      const minutes = Math.floor(seconds / 60);
-      const hours = Math.floor(minutes / 60);
-      if (hours > 0) return `${hours}h ${minutes % 60}m`;
-      if (minutes > 0) return `${minutes} mins`;
-      return `${seconds} sec`;
-    }
-
-    onChildAdded(ordersRef, (snapshot) => {
-      const order = snapshot.val();
-      const orderId = snapshot.key;
-      orderMap[orderId] = order;
-
-      const card = createOrderCard(orderId, order);
-      ordersDiv.appendChild(card);
-
-      // Sort orders by timestamp ascending (oldest first)
-      const sorted = Object.entries(orderMap).sort((a, b) => (a[1].timestamp || 0) - (b[1].timestamp || 0));
-      ordersDiv.innerHTML = '';
-      for (const [id, _] of sorted) {
-        const el = document.getElementById(id);
-        if (el) ordersDiv.appendChild(el);
-      }
+      // Add to top (oldest first => bottom, so we use append)
+      ordersDiv.appendChild(div);
     });
   </script>
 </body>
