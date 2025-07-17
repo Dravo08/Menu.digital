@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Kitchen Dashboard – Wooden Garden</title>
   <style>
     body {
       font-family: "Segoe UI", sans-serif;
       background: #f5f5f5;
       margin: 0;
-      padding: 20px;
+      padding: 20px 0 56px 0; /* bottom padding for nav */
     }
 
     h1 {
@@ -17,10 +17,15 @@
       margin-bottom: 20px;
     }
 
-    #orders {
+    #orders, #history {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      padding: 0 20px;
+    }
+
+    #history {
+      display: none;
     }
 
     .order-card {
@@ -29,6 +34,7 @@
       box-shadow: 0 1px 5px rgba(0,0,0,0.1);
       padding: 15px;
       border-left: 5px solid #8bc34a;
+      transition: border-color 0.3s;
     }
 
     .order-header {
@@ -40,6 +46,7 @@
     .order-info {
       margin-bottom: 8px;
       color: #333;
+      white-space: pre-line;
     }
 
     .status-buttons button {
@@ -49,6 +56,7 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
+      transition: background-color 0.3s;
     }
 
     .pending { background: #ffcc80; }
@@ -65,6 +73,44 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      z-index: 999;
+    }
+
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 48px;
+      background: #5d4037;
+      border-top: 1px solid #4a2e1a;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
+      z-index: 999;
+      font-size: 20px;
+      color: #ddd;
+      user-select: none;
+    }
+
+    .nav-button {
+      flex-grow: 1;
+      text-align: center;
+      cursor: pointer;
+      padding: 6px 0;
+      transition: color 0.3s, border-top 0.3s;
+      font-weight: 600;
+    }
+
+    .nav-button.active {
+      color: #f0e6d2;
+      border-top: 3px solid #8bc34a;
+      font-weight: 700;
+    }
+
+    #history .status-buttons {
+      display: none;
     }
   </style>
 </head>
@@ -74,6 +120,12 @@
   <button id="logout">Logout</button>
 
   <div id="orders"></div>
+  <div id="history"></div>
+
+  <div class="bottom-nav">
+    <div id="btnOrders" class="nav-button active" title="Orders">🧾 Orders</div>
+    <div id="btnHistory" class="nav-button" title="History">📜 History</div>
+  </div>
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
@@ -81,8 +133,10 @@
       getDatabase,
       ref,
       onChildAdded,
+      onChildRemoved,
       set,
-      remove
+      remove,
+      update
     } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
     import {
       getAuth,
@@ -108,6 +162,7 @@
     const completedRef = ref(db, 'completedOrders');
 
     const ordersDiv = document.getElementById('orders');
+    const historyDiv = document.getElementById('history');
     const logoutBtn = document.getElementById('logout');
 
     logoutBtn.addEventListener('click', () => {
@@ -122,44 +177,174 @@
       }
     });
 
-    // Listen for new orders
-    onChildAdded(ordersRef, (snapshot) => {
-      const order = snapshot.val();
-      const key = snapshot.key;
+    function formatItems(items) {
+      return items.map(i => {
+        const qty = i.quantity || 1;
+        const pricePer = i.price || 0;
+        const total = qty * pricePer;
+        return `${i.name || "Unnamed"} / Qty: ${qty} / Rs.${pricePer} each / Total: Rs.${total}`;
+      }).join('\n');
+    }
 
-      const div = document.createElement('div');
-      div.className = 'order-card';
+    function createOrderCard(order, key, showStatusButtons = true) {
+      let orderName = order.name;
+      if (!orderName && order.items && order.items.length > 0) {
+        orderName = order.items[0].name || "Unnamed Item";
+      } else if (!orderName) {
+        orderName = "Unnamed Item";
+      }
+
+      let priceDisplay = '';
+      if (order.price) {
+        priceDisplay = `Price: Rs. ${order.price}`;
+      } else if (order.items && order.items.length > 0) {
+        const totalPrice = order.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 1)), 0);
+        priceDisplay = `Total Price: Rs. ${totalPrice}\nDetails:\n${formatItems(order.items)}`;
+      } else {
+        priceDisplay = "Price: N/A";
+      }
 
       const time = new Date(order.timestamp).toLocaleTimeString();
 
+      // Fix: Check both order.table and order.tableNumber for table display
+      const tableNumber = order.table || order.tableNumber || 'N/A';
+
+      const div = document.createElement('div');
+      div.className = 'order-card';
+      div.id = key;
+
       div.innerHTML = `
-        <div class="order-header">${order.name} – Table ${order.table || 'N/A'}</div>
-        <div class="order-info">Rs. ${order.price}</div>
+        <div class="order-header">${orderName} – Table ${tableNumber}</div>
+        <div class="order-info">${priceDisplay.replace(/\n/g, '<br>')}</div>
         <div class="order-info">🕒 ${time}</div>
-        <div class="status-buttons">
-          <button class="pending">Pending</button>
-          <button class="processing">Processing</button>
-          <button class="completed">Completed</button>
-        </div>
+        ${showStatusButtons ? `
+          <div class="status-buttons">
+            <button class="pending">Pending</button>
+            <button class="processing">Processing</button>
+            <button class="completed">Completed</button>
+          </div>` : ''}
       `;
 
-      const buttons = div.querySelectorAll('.status-buttons button');
-      buttons[0].addEventListener('click', () => {
-        div.style.borderLeft = '5px solid #ffcc80';
-      });
-      buttons[1].addEventListener('click', () => {
-        div.style.borderLeft = '5px solid #81d4fa';
-      });
-      buttons[2].addEventListener('click', async () => {
-        // Move to completedOrders
-        await set(ref(db, `completedOrders/${key}`), order);
-        await remove(ref(db, `orders/${key}`));
-        div.remove(); // Remove from UI
-      });
+      if (showStatusButtons) {
+        const buttons = div.querySelectorAll('.status-buttons button');
+        buttons[0].addEventListener('click', () => {
+          div.style.borderLeft = '5px solid #ffcc80';
+          update(ref(db, `orders/${key}`), { status: 'pending' });
+        });
+        buttons[1].addEventListener('click', () => {
+          div.style.borderLeft = '5px solid #81d4fa';
+          update(ref(db, `orders/${key}`), { status: 'processing' });
+        });
+        buttons[2].addEventListener('click', async () => {
+          try {
+            await set(ref(db, `completedOrders/${key}`), { ...order, status: 'completed' });
+            await remove(ref(db, `orders/${key}`));
+            div.remove();
+            delete ordersMap[key];
+            if (currentView === 'history') {
+              renderHistory();
+            }
+          } catch (err) {
+            alert("Error moving order to history: " + err.message);
+          }
+        });
+      }
 
-      // Add to top (oldest first => bottom, so we use append)
-      ordersDiv.appendChild(div);
+      return div;
+    }
+
+    const ordersMap = {};
+    const completedMap = {};
+
+    onChildAdded(ordersRef, (snapshot) => {
+      const order = snapshot.val();
+      const key = snapshot.key;
+      ordersMap[key] = order;
+      if (currentView === 'orders') {
+        const card = createOrderCard(order, key, true);
+        ordersDiv.appendChild(card);
+        sortOrderCards(ordersDiv);
+      }
     });
+
+    onChildRemoved(ordersRef, (snapshot) => {
+      const key = snapshot.key;
+      delete ordersMap[key];
+      const el = document.getElementById(key);
+      if (el && el.parentNode === ordersDiv) el.remove();
+    });
+
+    onChildAdded(completedRef, (snapshot) => {
+      const order = snapshot.val();
+      const key = snapshot.key;
+      completedMap[key] = order;
+      if (currentView === 'history') {
+        const card = createOrderCard(order, key, false);
+        historyDiv.appendChild(card);
+        sortOrderCards(historyDiv);
+      }
+    });
+
+    onChildRemoved(completedRef, (snapshot) => {
+      const key = snapshot.key;
+      delete completedMap[key];
+      const el = document.getElementById(key);
+      if (el && el.parentNode === historyDiv) el.remove();
+    });
+
+    function sortOrderCards(container) {
+      const cards = Array.from(container.children);
+      cards.sort((a, b) => {
+        const timeA = new Date(ordersMap[a.id]?.timestamp || completedMap[a.id]?.timestamp || 0).getTime();
+        const timeB = new Date(ordersMap[b.id]?.timestamp || completedMap[b.id]?.timestamp || 0).getTime();
+        return timeA - timeB;
+      });
+      cards.forEach(card => container.appendChild(card));
+    }
+
+    const btnOrders = document.getElementById('btnOrders');
+    const btnHistory = document.getElementById('btnHistory');
+
+    let currentView = 'orders';
+
+    btnOrders.addEventListener('click', () => {
+      if (currentView === 'orders') return;
+      currentView = 'orders';
+      btnOrders.classList.add('active');
+      btnHistory.classList.remove('active');
+      historyDiv.style.display = 'none';
+      ordersDiv.style.display = 'flex';
+      renderOrders();
+    });
+
+    btnHistory.addEventListener('click', () => {
+      if (currentView === 'history') return;
+      currentView = 'history';
+      btnHistory.classList.add('active');
+      btnOrders.classList.remove('active');
+      ordersDiv.style.display = 'none';
+      historyDiv.style.display = 'flex';
+      renderHistory();
+    });
+
+    function renderOrders() {
+      ordersDiv.innerHTML = '';
+      for (const key in ordersMap) {
+        const card = createOrderCard(ordersMap[key], key, true);
+        ordersDiv.appendChild(card);
+      }
+      sortOrderCards(ordersDiv);
+    }
+
+    function renderHistory() {
+      historyDiv.innerHTML = '';
+      for (const key in completedMap) {
+        const card = createOrderCard(completedMap[key], key, false);
+        historyDiv.appendChild(card);
+      }
+      sortOrderCards(historyDiv);
+    }
+
   </script>
 </body>
 </html>
