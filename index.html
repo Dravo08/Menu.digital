@@ -2,52 +2,68 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Wooden Garden Menu</title>
+  <title>Wooden Garden Menu - Order</title>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #f4f1ea url('https://www.transparenttextures.com/patterns/wood-pattern.png') repeat;
       color: #3e4e3e;
-      padding: 0;
       margin: 0;
+      padding: 0;
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
     }
+
     header {
       text-align: center;
-      padding: 30px 20px 15px;
+      padding: 20px;
       background: #4e7d5b;
       color: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     }
+
     header h1 {
       margin: 0;
-      font-size: 2.8rem;
-      font-weight: 700;
-      letter-spacing: 2px;
+      font-size: 2.4rem;
     }
+
     header p {
-      margin-top: 6px;
+      margin: 6px 0 0;
       font-style: italic;
-      font-weight: 500;
-      font-size: 1.1rem;
+      font-size: 1rem;
       color: #d1c7b7;
+    }
+
+    #search-bar {
+      width: 100%;
+      max-width: 400px;
+      margin: 20px auto 0;
+      display: block;
+      padding: 10px 15px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      box-sizing: border-box;
     }
 
     main {
       flex: 1;
-      padding: 20px 30px;
+      padding: 20px;
       max-width: 1200px;
       margin: 0 auto;
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
     }
 
     .menu-container {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-      gap: 22px;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 20px;
+      flex: 2;
     }
+
     .menu-item {
       background: #fff8f0;
       border: 1px solid #d1c7b7;
@@ -57,105 +73,175 @@
       display: flex;
       flex-direction: column;
       transition: all 0.3s ease;
-      cursor: default;
     }
+
     .menu-item:hover {
-      transform: translateY(-6px);
+      transform: translateY(-4px);
       box-shadow: 0 8px 16px rgba(78, 125, 91, 0.35);
     }
+
     .menu-item img {
       width: 100%;
       height: 160px;
       object-fit: cover;
-      border-bottom: 1px solid #d1c7b7;
     }
+
     .menu-content {
-      padding: 18px 20px;
-      flex: 1;
+      padding: 15px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      gap: 10px;
     }
+
     .menu-content h2 {
-      margin: 0 0 10px;
-      font-size: 20px;
-      font-weight: 700;
-      color: #3e4e3e;
+      margin: 0;
+      font-size: 1.2rem;
     }
+
     .menu-content p {
-      margin: 4px 0;
-      color: #5a6d55;
-      font-size: 15px;
-      flex-grow: 1;
+      margin: 0;
+      font-size: 0.9rem;
+      color: #555;
     }
-    .menu-content .price {
-      font-weight: 600;
-      margin-top: 12px;
-      font-size: 17px;
+
+    .price {
+      font-weight: bold;
       color: #4e7d5b;
     }
-    .menu-content button {
+
+    .order-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .order-controls input[type="number"] {
+      width: 50px;
+      padding: 4px;
+      text-align: center;
+    }
+
+    .qty-btn {
+      background: #4e7d5b;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      width: 28px;
+      height: 28px;
+      cursor: pointer;
+      font-size: 18px;
+    }
+
+    aside#order-summary {
+      flex: 1;
+      background: #fff8f0;
+      border: 1px solid #d1c7b7;
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 600px;
+      overflow-y: auto;
+      position: sticky;
+      top: 30px;
+    }
+
+    #order-summary h2 {
+      margin: 0 0 10px;
+    }
+
+    #order-items {
+      margin: 10px 0;
+    }
+
+    .order-item {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    #total-price {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+
+    #table-number {
+      width: 100%;
+      padding: 8px;
+      margin-top: 15px;
+    }
+
+    #place-order-btn {
+      margin-top: 15px;
+      width: 100%;
+      padding: 12px;
       background: #4e7d5b;
       border: none;
-      color: white;
-      padding: 12px 18px;
+      color: #fff;
+      font-weight: bold;
       cursor: pointer;
-      border-radius: 8px;
-      font-weight: 600;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
-      margin-top: 14px;
-      transition: background 0.3s ease;
-      align-self: flex-start;
     }
-    .menu-content button:hover {
-      background: #3a5c3d;
+
+    .order-fab {
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      background: #4e7d5b;
+      color: #fff;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 26px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
     }
 
     footer {
       text-align: center;
-      padding: 20px 15px;
+      padding: 15px;
       background: #4e7d5b;
       color: #fff;
-      font-size: 14px;
-      box-shadow: 0 -2px 8px rgba(0,0,0,0.15);
-    }
-    footer a {
-      color: #d1c7b7;
-      text-decoration: none;
-      margin: 0 8px;
-    }
-    footer a:hover {
-      text-decoration: underline;
     }
 
-    @media (max-width: 600px) {
-      .menu-container {
-        grid-template-columns: 1fr;
+    @media (max-width: 900px) {
+      main {
+        flex-direction: column;
       }
-      header h1 {
-        font-size: 2rem;
+      aside#order-summary {
+        position: static;
+        max-height: none;
       }
     }
   </style>
 </head>
 <body>
-
   <header>
     <h1>Wooden Garden</h1>
-    <p>“Fresh flavors from nature’s heart”</p>
+    <p>Fresh flavors from nature’s heart</p>
   </header>
+
+  <input id="search-bar" placeholder="Search for food...">
 
   <main>
     <div class="menu-container" id="menu"></div>
+
+    <aside id="order-summary">
+      <h2>Your Order</h2>
+      <div id="order-items">
+        <p>No items selected.</p>
+      </div>
+      <div id="total-price">Total: Rs. 0</div>
+      <input type="number" id="table-number" placeholder="Table Number">
+      <button id="place-order-btn" disabled>Place Order</button>
+    </aside>
   </main>
 
+  <div class="order-fab" onclick="document.getElementById('order-summary').scrollIntoView({behavior: 'smooth'})">🛒</div>
+
   <footer>
-    <p>Contact us: +977 98XXXXXXXX | wooden.garden@example.com</p>
-    <p>
-      Follow us on
-      <a href="#" target="_blank" rel="noopener noreferrer">Facebook</a>,
-      <a href="#" target="_blank" rel="noopener noreferrer">Instagram</a>
-    </p>
+    Wooden Garden &copy; 2025
   </footer>
 
   <script type="module">
@@ -165,40 +251,157 @@
     const menuRef = ref(db, 'menu');
     const ordersRef = ref(db, 'orders');
     const menuDiv = document.getElementById('menu');
+    const searchBar = document.getElementById('search-bar');
+
+    const orderSelections = {};
+
+    function updateOrderSummary() {
+      const orderItemsDiv = document.getElementById('order-items');
+      const totalPriceDiv = document.getElementById('total-price');
+      const placeOrderBtn = document.getElementById('place-order-btn');
+      const tableInput = document.getElementById('table-number');
+
+      const selectedItems = Object.values(orderSelections).filter(item => item.selected && item.quantity > 0);
+
+      if (selectedItems.length === 0) {
+        orderItemsDiv.innerHTML = '<p>No items selected.</p>';
+        totalPriceDiv.textContent = 'Total: Rs. 0';
+        placeOrderBtn.disabled = true;
+        return;
+      }
+
+      orderItemsDiv.innerHTML = '';
+      let total = 0;
+      selectedItems.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'order-item';
+        itemDiv.textContent = `${item.name} x ${item.quantity}`;
+        orderItemsDiv.appendChild(itemDiv);
+        total += item.price * item.quantity;
+      });
+
+      totalPriceDiv.textContent = `Total: Rs. ${total}`;
+      placeOrderBtn.disabled = !tableInput.value || Number(tableInput.value) < 1;
+    }
+
+    function createMenuItem(id, item) {
+      const div = document.createElement('div');
+      div.className = 'menu-item';
+      div.innerHTML = `
+        <img src="${item.image}" alt="${item.name}">
+        <div class="menu-content">
+          <h2>${item.name}</h2>
+          <p>${item.description || ''}</p>
+          <div class="price">Rs. ${item.price}</div>
+          <div class="order-controls">
+            <label><input type="checkbox" id="select-${id}"> Add</label>
+            <label>
+              Qty:
+              <button type="button" class="qty-btn" data-action="decrease">−</button>
+              <input type="number" id="qty-${id}" min="0" value="0" disabled>
+              <button type="button" class="qty-btn" data-action="increase">+</button>
+            </label>
+          </div>
+        </div>
+      `;
+
+      const checkbox = div.querySelector(`#select-${id}`);
+      const qtyInput = div.querySelector(`#qty-${id}`);
+      const minusBtn = div.querySelector(`.qty-btn[data-action="decrease"]`);
+      const plusBtn = div.querySelector(`.qty-btn[data-action="increase"]`);
+
+      checkbox.addEventListener('change', () => {
+        if (checkbox.checked) {
+          qtyInput.disabled = false;
+          if (Number(qtyInput.value) === 0) qtyInput.value = 1;
+          orderSelections[id] = {
+            selected: true,
+            quantity: Number(qtyInput.value),
+            price: Number(item.price),
+            name: item.name,
+          };
+        } else {
+          qtyInput.disabled = true;
+          qtyInput.value = 0;
+          orderSelections[id] = { selected: false, quantity: 0 };
+        }
+        updateOrderSummary();
+      });
+
+      qtyInput.addEventListener('input', () => {
+        let val = Number(qtyInput.value);
+        if (isNaN(val) || val < 0) val = 0;
+        qtyInput.value = val;
+        if (val === 0) {
+          checkbox.checked = false;
+          qtyInput.disabled = true;
+          orderSelections[id] = { selected: false, quantity: 0 };
+        } else {
+          checkbox.checked = true;
+          qtyInput.disabled = false;
+          orderSelections[id] = {
+            selected: true,
+            quantity: val,
+            price: Number(item.price),
+            name: item.name,
+          };
+        }
+        updateOrderSummary();
+      });
+
+      minusBtn.addEventListener('click', () => {
+        let val = Number(qtyInput.value) || 0;
+        if (val > 0) val--;
+        qtyInput.value = val;
+        qtyInput.dispatchEvent(new Event('input'));
+      });
+
+      plusBtn.addEventListener('click', () => {
+        let val = Number(qtyInput.value) || 0;
+        val++;
+        qtyInput.value = val;
+        qtyInput.dispatchEvent(new Event('input'));
+      });
+
+      return div;
+    }
 
     onValue(menuRef, (snapshot) => {
       const data = snapshot.val();
       menuDiv.innerHTML = '';
-      if (!data) {
-        menuDiv.innerHTML = '<p style="text-align:center; color:#5a6d55;">Menu is currently empty.</p>';
-        return;
-      }
       for (let id in data) {
         const item = data[id];
-        const div = document.createElement('div');
-        div.className = 'menu-item';
-        div.innerHTML = `
-          <img src="${item.image}" alt="${item.name}">
-          <div class="menu-content">
-            <h2>${item.name}</h2>
-            <p>${item.description || ''}</p>
-            <div class="price">Rs. ${item.price}</div>
-            <button onclick="orderItem('${item.name}', '${item.price}')">Order</button>
-          </div>
-        `;
+        const div = createMenuItem(id, item);
         menuDiv.appendChild(div);
       }
+      updateOrderSummary();
     });
 
-    window.orderItem = function(name, price) {
-      push(ordersRef, {
-        name,
-        price,
-        timestamp: Date.now()
-      });
-      alert(`Ordered: ${name}`);
-    };
-  </script>
+    document.getElementById('table-number').addEventListener('input', updateOrderSummary);
 
+    document.getElementById('place-order-btn').addEventListener('click', () => {
+      const tableNumber = document.getElementById('table-number').value;
+      const selectedItems = Object.values(orderSelections).filter(item => item.selected && item.quantity > 0);
+      const orderPayload = {
+        tableNumber,
+        items: selectedItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
+        totalPrice: selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0),
+        timestamp: Date.now(),
+      };
+      push(ordersRef, orderPayload).then(() => {
+        alert('Order placed!');
+        location.reload();
+      });
+    });
+
+    searchBar.addEventListener('input', () => {
+      const q = searchBar.value.toLowerCase();
+      const items = document.querySelectorAll('.menu-item');
+      items.forEach(item => {
+        const name = item.querySelector('h2').textContent.toLowerCase();
+        item.style.display = name.includes(q) ? '' : 'none';
+      });
+    });
+  </script>
 </body>
 </html>
