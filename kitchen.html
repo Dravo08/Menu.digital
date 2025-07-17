@@ -90,12 +90,14 @@
   <div id="orders"></div>
 
   <script type="module">
-    import { db } from './firebase.js';
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
     import {
+      getDatabase,
       ref,
       onChildAdded,
+      update,
       remove,
-      update
+      set
     } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
     import {
       getAuth,
@@ -103,15 +105,32 @@
       signOut
     } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
 
+    // ✅ Your actual config
+    const firebaseConfig = {
+      apiKey: "AIzaSyATGDe4NI75RSny4ZbE3WDtaUoUivjv3E8",
+      authDomain: "digital-menu-wooden.firebaseapp.com",
+      databaseURL: "https://digital-menu-wooden-default-rtdb.firebaseio.com",
+      projectId: "digital-menu-wooden",
+      storageBucket: "digital-menu-wooden.appspot.com",
+      messagingSenderId: "776717051891",
+      appId: "1:776717051891:web:c52bc347ba84434e839486",
+      measurementId: "G-12S0DC6EMT"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
     const auth = getAuth();
+
     const ordersRef = ref(db, 'orders');
     const ordersDiv = document.getElementById('orders');
     const orderMap = {};
 
+    // 🔐 Auth check
     onAuthStateChanged(auth, (user) => {
       if (!user) window.location.href = "login.html";
     });
 
+    // 🚪 Logout
     document.getElementById('logout').addEventListener('click', () => {
       signOut(auth).then(() => window.location.href = 'login.html');
     });
@@ -149,7 +168,7 @@
 
       btnCompleted.addEventListener('click', async () => {
         const completedRef = ref(db, `completedOrders/${orderId}`);
-        await update(completedRef, { ...order, status: 'completed' });
+        await set(completedRef, { ...order, status: 'completed' });
         await remove(ref(db, `orders/${orderId}`));
         document.getElementById(orderId)?.remove();
       });
@@ -179,7 +198,7 @@
       const card = createOrderCard(orderId, order);
       ordersDiv.appendChild(card);
 
-      // Sort by oldest first
+      // Sort orders by timestamp ascending (oldest first)
       const sorted = Object.entries(orderMap).sort((a, b) => (a[1].timestamp || 0) - (b[1].timestamp || 0));
       ordersDiv.innerHTML = '';
       for (const [id, _] of sorted) {
