@@ -35,25 +35,35 @@
       border-radius: 5px;
       cursor: pointer;
       color: var(--white);
+      font-weight: 600;
+      transition: background-color 0.3s ease;
+    }
+    #logout:hover {
+      background: #7cbc2c;
     }
     main {
       max-width: 960px;
-      margin: auto;
-      padding: 2rem;
+      margin: 2rem auto;
+      padding: 0 1rem;
     }
     section {
-      margin-bottom: 2rem;
+      margin-bottom: 2.5rem;
     }
     h2 {
       color: var(--primary);
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.75rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
     .card {
       background: var(--white);
       border-radius: 8px;
-      padding: 1rem;
+      padding: 1rem 1.5rem;
       box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       margin-bottom: 1rem;
+      min-height: 80px;
     }
     .menu-item, .order-item {
       display: flex;
@@ -64,26 +74,47 @@
     input, button {
       padding: 0.5rem;
       font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      transition: border-color 0.2s ease;
+    }
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 5px var(--accent);
     }
     input[type="text"], input[type="number"] {
-      width: 160px;
+      width: 180px;
+      max-width: 100%;
     }
     button {
       border: none;
       cursor: pointer;
       border-radius: 4px;
+      font-weight: 600;
+      transition: background-color 0.3s ease;
     }
     .add-btn, .save-btn {
       background: var(--accent);
       color: white;
     }
+    .add-btn:hover, .save-btn:hover {
+      background: #7cbc2c;
+    }
     .delete-btn {
       background: #e53935;
       color: white;
     }
+    .delete-btn:hover {
+      background: #ab2a23;
+    }
     @media (max-width: 600px) {
       .menu-item input, .menu-item button {
         width: 100%;
+      }
+      .menu-item {
+        flex-direction: column;
+        gap: 0.75rem;
       }
     }
   </style>
@@ -91,34 +122,66 @@
 <body>
   <header>
     <h1>🌿 Wooden Garden — Owner Panel</h1>
-    <button id="logout">Logout</button>
+    <button id="logout" aria-label="Logout from Owner Panel">Logout</button>
   </header>
 
   <main>
-    <section>
-      <h2>📊 Today’s Sales Summary</h2>
-      <div class="card" id="sales-summary">Loading...</div>
+    <section aria-labelledby="sales-summary-heading">
+      <h2 id="sales-summary-heading">📊 Today’s Sales Summary</h2>
+      <div class="card" id="sales-summary" role="region" aria-live="polite" aria-atomic="true">
+        Loading sales summary...
+      </div>
     </section>
 
-    <section>
-      <h2>⭐ Best Seller of the Day</h2>
-      <div class="card" id="best-seller">Loading...</div>
+    <section aria-labelledby="best-seller-heading">
+      <h2 id="best-seller-heading">⭐ Best Seller of the Day</h2>
+      <div class="card" id="best-seller" role="region" aria-live="polite" aria-atomic="true">
+        Loading best seller info...
+      </div>
     </section>
 
-    <section>
-      <h2>🧾 Live Orders</h2>
-      <div class="card" id="orders"></div>
+    <section aria-labelledby="live-orders-heading">
+      <h2 id="live-orders-heading">🧾 Live Orders</h2>
+      <div class="card" id="orders" role="region" aria-live="polite" aria-atomic="true">
+        Loading live orders...
+      </div>
     </section>
 
-    <section>
-      <h2>🍽️ Manage Menu Items</h2>
-      <form id="add-menu-form" class="card menu-item">
-        <input type="text" id="new-name" placeholder="Item Name" required />
-        <input type="number" id="new-price" placeholder="Price (Rs.)" required />
-        <input type="text" id="new-category" placeholder="Category" required />
-        <button type="submit" class="add-btn">Add Item</button>
+    <section aria-labelledby="manage-menu-heading">
+      <h2 id="manage-menu-heading">🍽️ Manage Menu Items</h2>
+      <form id="add-menu-form" class="card menu-item" aria-label="Add new menu item">
+        <input 
+          type="text" 
+          id="new-name" 
+          name="name" 
+          placeholder="Item Name" 
+          required 
+          aria-required="true"
+          autocomplete="off"
+        />
+        <input 
+          type="number" 
+          id="new-price" 
+          name="price" 
+          placeholder="Price (Rs.)" 
+          min="0" step="0.01"
+          required 
+          aria-required="true"
+        />
+        <input 
+          type="text" 
+          id="new-category" 
+          name="category" 
+          placeholder="Category" 
+          required 
+          aria-required="true"
+          autocomplete="off"
+        />
+        <button type="submit" class="add-btn" aria-label="Add new menu item">Add Item</button>
       </form>
-      <div id="menu"></div>
+      <div id="menu" role="region" aria-live="polite" aria-atomic="true" tabindex="0">
+        <!-- Menu items will be dynamically inserted here -->
+      </div>
     </section>
   </main>
 
