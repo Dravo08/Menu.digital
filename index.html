@@ -662,37 +662,6 @@
           statusText.textContent = 'Order Status: No Active Orders';
           statusLight.style.backgroundColor = 'grey';
           statusLight.style.animationPlayState = 'paused';
-           statusLight.style.opacity = '0.5';
-          return;
-        }
-
-        // Prioritize status display: pending > processing > completed
-        let hasPending = tableOrders.some(o => o.status === 'pending');
-        let hasProcessing = tableOrders.some(o => o.status === 'processing');
-        let hasCompleted = tableOrders.some(o => o.status === 'completed');
-
-        statusContainer.style.display = 'flex';
-        if (hasPending) {
-          statusText.textContent = 'Order Status: Pending';
-          statusLight.style.backgroundColor = '#fbc02d'; // yellow
-          statusLight.style.animationDuration = '1.5s';
-          statusLight.style.animationPlayState = 'running';
-          statusLight.style.opacity = '1';
-        } else if (hasProcessing) {
-          statusText.textContent = 'Order Status: Processing';
-          statusLight.style.backgroundColor = '#1976d2'; // blue
-          statusLight.style.animationDuration = '1s';
-          statusLight.style.animationPlayState = 'running';
-          statusLight.style.opacity = '1';
-        } else if (hasCompleted) {
-          statusText.textContent = 'Order Status: Completed';
-          statusLight.style.backgroundColor = '#388e3c'; // green
-          statusLight.style.animationPlayState = 'paused';
-          statusLight.style.opacity = '1';
-        } else {
-          statusText.textContent = 'Order Status: No Active Orders';
-          statusLight.style.backgroundColor = 'grey';
-          statusLight.style.animationPlayState = 'paused';
           statusLight.style.opacity = '0.5';
         }
       });
@@ -714,4 +683,3 @@
   </script>
 </body>
 </html>
-       
