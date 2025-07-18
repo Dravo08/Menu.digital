@@ -8,7 +8,7 @@
       font-family: "Segoe UI", sans-serif;
       background: #f5f5f5;
       margin: 0;
-      padding: 20px 0 56px 0; /* bottom padding for nav */
+      padding: 20px 0 56px 0;
     }
 
     h1 {
@@ -35,6 +35,27 @@
       padding: 15px;
       border-left: 5px solid #8bc34a;
       transition: border-color 0.3s;
+      position: relative;
+    }
+
+    .order-card.canceled {
+      filter: grayscale(100%);
+      opacity: 0.6;
+      text-decoration: line-through;
+      pointer-events: none;
+    }
+
+    .cancel-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #f44336;
+      color: white;
+      border: none;
+      padding: 5px 8px;
+      font-size: 12px;
+      border-radius: 4px;
+      cursor: pointer;
     }
 
     .order-header {
@@ -159,7 +180,6 @@
     const db = getDatabase(app);
     const auth = getAuth(app);
 
-    // Redirect to login if not logged in
     onAuthStateChanged(auth, (user) => {
       if (!user) {
         window.location.href = "kitchen-login.html";
@@ -183,7 +203,7 @@
 
     function playNotificationSound() {
       const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-      audio.play().catch(() => { /* ignore if autoplay blocked */ });
+      audio.play().catch(() => {});
     }
 
     function formatItems(items) {
@@ -197,7 +217,9 @@
 
     function createOrderCard(order, key, showStatusButtons = true) {
       let orderName = order.name;
-      if (!orderName && order.items && order.items.length > 0) {
+      if (!orderName && order?.status === 'cancelled') {
+        orderName = "Cancelled Order";
+      } else if (!orderName && order.items && order.items.length > 0) {
         orderName = order.items[0].name || "Unnamed Item";
       } else if (!orderName) {
         orderName = "Unnamed Item";
@@ -214,12 +236,15 @@
       }
 
       const time = new Date(order.timestamp).toLocaleTimeString();
-
       const tableNumber = order.table || order.tableNumber || 'N/A';
 
       const div = document.createElement('div');
       div.className = 'order-card';
       div.id = key;
+
+      if (order?.status === 'cancelled') {
+        div.classList.add('canceled');
+      }
 
       div.innerHTML = `
         <div class="order-header">${orderName} – Table ${tableNumber}</div>
@@ -272,7 +297,7 @@
         const card = createOrderCard(order, key, true);
         ordersDiv.appendChild(card);
         sortOrderCards(ordersDiv);
-        playNotificationSound(); // 🔔
+        playNotificationSound();
       }
     });
 
