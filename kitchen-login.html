@@ -99,7 +99,8 @@
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        if (user.email === "tk67682@gmail.com") { // replace with your kitchen email
+        // ✅ Fixed: Compare email in lowercase to avoid case issues
+        if (user.email.toLowerCase() === "tk67682@gmail.com") {
           localStorage.setItem("role", "kitchen");
           window.location.href = 'kitchen.html';
         } else {
