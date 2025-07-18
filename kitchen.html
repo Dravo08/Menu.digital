@@ -8,7 +8,7 @@
       font-family: "Segoe UI", sans-serif;
       background: #f5f5f5;
       margin: 0;
-      padding: 20px 0 56px 0; /* bottom padding for nav */
+      padding: 20px 0 56px 0;
     }
 
     h1 {
@@ -62,6 +62,7 @@
     .pending { background: #ffcc80; }
     .processing { background: #81d4fa; }
     .completed { background: #aed581; }
+    .cancel { background: #ef9a9a; }
 
     #logout {
       position: fixed;
@@ -187,15 +188,12 @@
     }
 
     function createOrderCard(order, key, showStatusButtons = true) {
-      let orderName = order.name;
-      if (!orderName && order.items && order.items.length > 0) {
-        orderName = order.items[0].name || "Unnamed Item";
-      } else if (!orderName) {
-        orderName = "Unnamed Item";
-      }
+      let orderName = order.name || (order.items && order.items.length > 0 && order.items[0].name) || "Unnamed Item";
 
       let priceDisplay = '';
-      if (order.price) {
+      if (order.status === 'cancelled') {
+        priceDisplay = `<strong style="color:red;">❌ Cancelled:</strong> ${order.note || ''}`;
+      } else if (order.price) {
         priceDisplay = `Price: Rs. ${order.price}`;
       } else if (order.items && order.items.length > 0) {
         const totalPrice = order.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 1)), 0);
@@ -205,8 +203,6 @@
       }
 
       const time = new Date(order.timestamp).toLocaleTimeString();
-
-      // Fix: Check both order.table and order.tableNumber for table display
       const tableNumber = order.table || order.tableNumber || 'N/A';
 
       const div = document.createElement('div');
@@ -222,30 +218,59 @@
             <button class="pending">Pending</button>
             <button class="processing">Processing</button>
             <button class="completed">Completed</button>
+            <button class="cancel">Cancel</button>
           </div>` : ''}
       `;
 
+      if (order.status === 'cancelled') {
+        div.style.borderLeft = '5px solid #ef5350';
+        div.querySelector('.order-header').innerHTML += ' – ❌ Cancelled';
+      }
+
       if (showStatusButtons) {
         const buttons = div.querySelectorAll('.status-buttons button');
+
         buttons[0].addEventListener('click', () => {
           div.style.borderLeft = '5px solid #ffcc80';
           update(ref(db, `orders/${key}`), { status: 'pending' });
         });
+
         buttons[1].addEventListener('click', () => {
           div.style.borderLeft = '5px solid #81d4fa';
           update(ref(db, `orders/${key}`), { status: 'processing' });
         });
+
+        // ✅ Updated Completed Button Logic
         buttons[2].addEventListener('click', async () => {
           try {
-            await set(ref(db, `completedOrders/${key}`), { ...order, status: 'completed' });
+            const finalStatus = order.status === 'cancelled' ? 'cancelled' : 'completed';
+            const finalNote = order.status === 'cancelled' ? (order.note || 'Sorry we don’t have it now') : '';
+
+            await set(ref(db, `completedOrders/${key}`), {
+              ...order,
+              status: finalStatus,
+              note: finalNote
+            });
+
             await remove(ref(db, `orders/${key}`));
             div.remove();
             delete ordersMap[key];
+
             if (currentView === 'history') {
               renderHistory();
             }
           } catch (err) {
             alert("Error moving order to history: " + err.message);
+          }
+        });
+
+        buttons[3].addEventListener('click', async () => {
+          try {
+            await update(ref(db, `orders/${key}`), { status: 'cancelled', note: 'Sorry we don’t have it now' });
+            div.style.borderLeft = '5px solid #ef5350';
+            renderOrders();
+          } catch (err) {
+            alert("Error cancelling order: " + err.message);
           }
         });
       }
@@ -304,7 +329,6 @@
 
     const btnOrders = document.getElementById('btnOrders');
     const btnHistory = document.getElementById('btnHistory');
-
     let currentView = 'orders';
 
     btnOrders.addEventListener('click', () => {
