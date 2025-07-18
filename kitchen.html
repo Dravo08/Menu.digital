@@ -10,7 +10,6 @@
       margin: 0;
       padding: 20px 0 56px 0;
     }
-
     h1 {
       color: #4e342e;
       text-align: center;
@@ -116,18 +115,14 @@
   </style>
 </head>
 <body>
-
   <h1>👨‍🍳 Kitchen Dashboard</h1>
   <button id="logout">Logout</button>
-
   <div id="orders"></div>
   <div id="history"></div>
-
   <div class="bottom-nav">
     <div id="btnOrders" class="nav-button active" title="Orders">🧾 Orders</div>
     <div id="btnHistory" class="nav-button" title="History">📜 History</div>
   </div>
-
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
     import {
@@ -135,6 +130,7 @@
       ref,
       onChildAdded,
       onChildRemoved,
+      onChildChanged,
       set,
       remove,
       update
@@ -222,25 +218,36 @@
           </div>` : ''}
       `;
 
-      if (order.status === 'cancelled') {
-        div.style.borderLeft = '5px solid #ef5350';
-        div.querySelector('.order-header').innerHTML += ' – ❌ Cancelled';
+      // Set border color & header label based on status
+      switch (order.status) {
+        case 'pending':
+          div.style.borderLeft = '5px solid #ffcc80';
+          break;
+        case 'processing':
+          div.style.borderLeft = '5px solid #81d4fa';
+          break;
+        case 'completed':
+          div.style.borderLeft = '5px solid #aed581';
+          break;
+        case 'cancelled':
+          div.style.borderLeft = '5px solid #ef5350';
+          div.querySelector('.order-header').innerHTML += ' – ❌ Cancelled';
+          break;
+        default:
+          div.style.borderLeft = '5px solid #8bc34a';
       }
 
       if (showStatusButtons) {
         const buttons = div.querySelectorAll('.status-buttons button');
 
         buttons[0].addEventListener('click', () => {
-          div.style.borderLeft = '5px solid #ffcc80';
           update(ref(db, `orders/${key}`), { status: 'pending' });
         });
 
         buttons[1].addEventListener('click', () => {
-          div.style.borderLeft = '5px solid #81d4fa';
           update(ref(db, `orders/${key}`), { status: 'processing' });
         });
 
-        // ✅ Updated Completed Button Logic
         buttons[2].addEventListener('click', async () => {
           try {
             const finalStatus = order.status === 'cancelled' ? 'cancelled' : 'completed';
@@ -267,8 +274,6 @@
         buttons[3].addEventListener('click', async () => {
           try {
             await update(ref(db, `orders/${key}`), { status: 'cancelled', note: 'Sorry we don’t have it now' });
-            div.style.borderLeft = '5px solid #ef5350';
-            renderOrders();
           } catch (err) {
             alert("Error cancelling order: " + err.message);
           }
@@ -288,6 +293,23 @@
       if (currentView === 'orders') {
         const card = createOrderCard(order, key, true);
         ordersDiv.appendChild(card);
+        sortOrderCards(ordersDiv);
+      }
+    });
+
+    onChildChanged(ordersRef, (snapshot) => {
+      const key = snapshot.key;
+      const order = snapshot.val();
+      ordersMap[key] = order;
+
+      const existingCard = document.getElementById(key);
+      if (existingCard) {
+        const newCard = createOrderCard(order, key, true);
+        ordersDiv.replaceChild(newCard, existingCard);
+        sortOrderCards(ordersDiv);
+      } else if (currentView === 'orders') {
+        const newCard = createOrderCard(order, key, true);
+        ordersDiv.appendChild(newCard);
         sortOrderCards(ordersDiv);
       }
     });
@@ -368,7 +390,6 @@
       }
       sortOrderCards(historyDiv);
     }
-
   </script>
 </body>
 </html>
