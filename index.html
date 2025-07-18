@@ -174,6 +174,14 @@
       cursor: pointer;
     }
 
+    /* NEW: Order status bar style */
+    #order-status-bar {
+      margin-top: 15px;
+      font-weight: bold;
+      color: #4e7d5b;
+      min-height: 24px;
+    }
+
     .order-fab {
       position: fixed;
       right: 20px;
@@ -244,6 +252,9 @@
       />
       <button id="place-order-btn" disabled>Place Order</button>
 
+      <!-- NEW: Order Status Bar -->
+      <div id="order-status-bar"></div>
+
       <hr style="margin:20px 0;" />
 
       <h3>Existing Orders</h3>
@@ -275,6 +286,7 @@
     const searchBar = document.getElementById('search-bar');
 
     const orderSelections = {};
+    const orderStatusBar = document.getElementById('order-status-bar');
 
     function updateOrderSummary() {
       const orderItemsDiv = document.getElementById('order-items');
@@ -432,7 +444,7 @@
     const existingOrdersDiv = document.getElementById('existing-orders');
     const orderDescriptionInput = document.getElementById('order-description');
 
-    // Updated loadExistingOrders function with partial quantity cancellation
+    // Load and display existing orders with status and cancel option
     function loadExistingOrders() {
       onValue(ordersRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -449,10 +461,9 @@
           div.style.padding = '6px 8px';
           div.style.borderBottom = '1px solid #ccc';
           div.style.display = 'flex';
-          div.style.flexDirection = 'column';
-          div.style.gap = '6px';
+          div.style.justifyContent = 'space-between';
+          div.style.alignItems = 'center';
 
-          // Order summary line
           let orderText = `Table ${order.tableNumber} | ${new Date(order.timestamp).toLocaleString()} | Status: ${
             order.status || 'pending'
           }`;
@@ -465,87 +476,41 @@
 
           const leftDiv = document.createElement('div');
           leftDiv.textContent = orderText;
+
+          // Show items summary
+          if (order.items && Array.isArray(order.items)) {
+            const itemsSummary = order.items.map((i) => `${i.name} x${i.quantity}`).join(', ');
+            const itemsDiv = document.createElement('div');
+            itemsDiv.style.fontSize = '0.85rem';
+            itemsDiv.style.color = '#555';
+            itemsDiv.textContent = `Items: ${itemsSummary}`;
+            leftDiv.appendChild(document.createElement('br'));
+            leftDiv.appendChild(itemsDiv);
+          }
+
           div.appendChild(leftDiv);
 
-          // Items list with quantities and cancellation input if allowed
-          if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-            order.items.forEach((item, idx) => {
-              const itemRow = document.createElement('div');
-              itemRow.style.display = 'flex';
-              itemRow.style.justifyContent = 'space-between';
-              itemRow.style.alignItems = 'center';
-              itemRow.style.gap = '10px';
+          // Cancel button only if not cancelled or completed
+          if (order.status !== 'cancelled' && order.status !== 'completed') {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel Order';
+            cancelBtn.style.background = '#e53935';
+            cancelBtn.style.color = '#fff';
+            cancelBtn.style.border = 'none';
+            cancelBtn.style.borderRadius = '4px';
+            cancelBtn.style.padding = '4px 8px';
+            cancelBtn.style.cursor = 'pointer';
+            cancelBtn.style.fontSize = '0.8rem';
 
-              const itemLabel = document.createElement('div');
-              itemLabel.textContent = `${item.name} x ${item.quantity}`;
-              itemRow.appendChild(itemLabel);
-
-              // If order is active, show cancel partial qty input
-              if (order.status !== 'cancelled' && order.status !== 'completed') {
-                const cancelInput = document.createElement('input');
-                cancelInput.type = 'number';
-                cancelInput.min = 0;
-                cancelInput.max = item.quantity;
-                cancelInput.value = 0;
-                cancelInput.style.width = '60px';
-
-                const cancelBtn = document.createElement('button');
-                cancelBtn.textContent = 'Cancel Qty';
-                cancelBtn.style.background = '#e53935';
-                cancelBtn.style.color = '#fff';
-                cancelBtn.style.border = 'none';
-                cancelBtn.style.borderRadius = '4px';
-                cancelBtn.style.padding = '4px 8px';
-                cancelBtn.style.cursor = 'pointer';
-                cancelBtn.style.fontSize = '0.8rem';
-
-                cancelBtn.onclick = () => {
-                  const qtyToCancel = Number(cancelInput.value);
-                  if (isNaN(qtyToCancel) || qtyToCancel <= 0) {
-                    alert('Enter a valid quantity to cancel.');
-                    return;
-                  }
-                  if (qtyToCancel > item.quantity) {
-                    alert(`Cannot cancel more than ordered quantity (${item.quantity}).`);
-                    return;
-                  }
-
-                  // Prepare updated items array
-                  const updatedItems = order.items.map((itm, i) => {
-                    if (i === idx) {
-                      const newQty = itm.quantity - qtyToCancel;
-                      if (newQty > 0) {
-                        return { ...itm, quantity: newQty };
-                      } else {
-                        return null; // remove item if qty 0
-                      }
-                    }
-                    return itm;
-                  }).filter(Boolean);
-
-                  // Determine new status
-                  const newStatus = updatedItems.length === 0 ? 'cancelled' : order.status;
-
-                  update(ref(db, `orders/${id}`), {
-                    items: updatedItems,
-                    status: newStatus,
-                    timestamp: Date.now(),
-                  })
-                    .then(() => {
-                      alert(`Cancelled ${qtyToCancel} unit(s) of "${item.name}".`);
-                      cancelInput.value = 0;
-                    })
-                    .catch((e) => {
-                      alert('Failed to update order: ' + e.message);
-                    });
-                };
-
-                itemRow.appendChild(cancelInput);
-                itemRow.appendChild(cancelBtn);
+            cancelBtn.onclick = () => {
+              if (confirm('Are you sure you want to cancel this order?')) {
+                update(ref(db, `orders/${id}`), { status: 'cancelled', timestamp: Date.now() }).catch((e) =>
+                  alert('Failed to cancel order: ' + e.message)
+                );
               }
+            };
 
-              div.appendChild(itemRow);
-            });
+            div.appendChild(cancelBtn);
           }
 
           existingOrdersDiv.appendChild(div);
@@ -555,12 +520,60 @@
 
     loadExistingOrders();
 
+    // NEW: Store last order key and listen for status updates in real-time
+    function saveLastOrderKey(key) {
+      localStorage.setItem('lastOrderKey', key);
+    }
+
+    function getLastOrderKey() {
+      return localStorage.getItem('lastOrderKey');
+    }
+
+    function listenToOrderStatus(orderKey) {
+      if (!orderKey) {
+        orderStatusBar.textContent = "";
+        return;
+      }
+      const orderRef = ref(db, `orders/${orderKey}`);
+      onValue(orderRef, (snapshot) => {
+        const order = snapshot.val();
+        if (!order) {
+          orderStatusBar.textContent = "Order no longer available.";
+          return;
+        }
+        let statusText = "Order Status: ";
+        switch (order.status) {
+          case "pending":
+            statusText += "Pending";
+            orderStatusBar.style.color = "#ffcc80"; // amber
+            break;
+          case "processing":
+            statusText += "Processing";
+            orderStatusBar.style.color = "#81d4fa"; // blue
+            break;
+          case "completed":
+            statusText += "Completed";
+            orderStatusBar.style.color = "#aed581"; // green
+            break;
+          case "cancelled":
+            statusText += "Cancelled";
+            orderStatusBar.style.color = "#e53935"; // red
+            break;
+          default:
+            statusText += order.status || "Unknown";
+            orderStatusBar.style.color = "#4e7d5b";
+            break;
+        }
+        orderStatusBar.textContent = statusText;
+      });
+    }
+
     document.getElementById('place-order-btn').addEventListener('click', () => {
       const tableNumber = document.getElementById('table-number').value.trim();
       const selectedItems = Object.values(orderSelections).filter((item) => item.selected && item.quantity > 0);
       const description = orderDescriptionInput.value.trim();
 
-     if (!tableNumber || Number(tableNumber) < 1) {
+      if (!tableNumber || Number(tableNumber) < 1) {
         alert('Please enter a valid table number.');
         return;
       }
@@ -579,12 +592,20 @@
       };
 
       push(ordersRef, orderPayload)
-        .then(() => {
+        .then((ref) => {
           alert('Order placed!');
+          saveLastOrderKey(ref.key);  // Save order key locally
+          listenToOrderStatus(ref.key); // Start listening to status in real-time
           location.reload();
         })
         .catch((err) => alert('Failed to place order: ' + err.message));
     });
+
+    // On load, listen to last order status if any
+    window.addEventListener('load', () => {
+      const lastKey = getLastOrderKey();
+      listenToOrderStatus(lastKey);
+    });
   </script>
 </body>
-  </html>
+</html>
