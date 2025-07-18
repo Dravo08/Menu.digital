@@ -560,103 +560,106 @@
     loadExistingOrders();
 
     document.getElementById('place-order-btn').addEventListener('click', () => {
-  const tableNumber = document.getElementById('table-number').value.trim();
-  const selectedItems = Object.values(orderSelections).filter((item) => item.selected && item.quantity > 0);
-  const description = orderDescriptionInput.value.trim();
+      const tableNumber = document.getElementById('table-number').value.trim();
+      const selectedItems = Object.values(orderSelections).filter((item) => item.selected && item.quantity > 0);
+      const description = orderDescriptionInput.value.trim();
 
-  if (!tableNumber || Number(tableNumber) < 1) {
-    alert('Please enter a valid table number.');
-    return;
-  }
-
-  if (selectedItems.length === 0) {
-    alert('Please select at least one menu item.');
-    return;
-  }
-
-  const newOrder = {
-    customerId,  // Save the customerId here
-    tableNumber: Number(tableNumber),
-    items: selectedItems.map(({ name, quantity, price }) => ({
-      name,
-      quantity,
-      price,
-    })),
-    description: description,
-    status: 'pending',
-    timestamp: Date.now(),
-  };
-
-  push(ordersRef, newOrder)
-    .then(() => {
-      alert('Order placed successfully!');
-      // Reset order form
-      for (const id in orderSelections) {
-        orderSelections[id].selected = false;
-        orderSelections[id].quantity = 0;
+      if (!tableNumber || Number(tableNumber) < 1) {
+        alert('Please enter a valid table number.');
+        return;
       }
-      orderDescriptionInput.value = '';
-      document.getElementById('table-number').value = '';
-      updateOrderSummary();
 
-      // Uncheck checkboxes and reset quantities in UI
-      document.querySelectorAll('.menu-item input[type="checkbox"]').forEach((cb) => (cb.checked = false));
-      document.querySelectorAll('.menu-item input[type="number"]').forEach((input) => {
-        input.value = 0;
-        input.disabled = true;
-      });
-    })
-    .catch((e) => alert('Failed to place order: ' + e.message));
-});
+      if (selectedItems.length === 0) {
+        alert('Please select at least one menu item.');
+        return;
+      }
 
-// --- Real-time Kitchen Order Status Bar ---
+      const newOrder = {
+        customerId,
+        tableNumber: Number(tableNumber),
+        items: selectedItems.map(({ name, quantity, price }) => ({
+          name,
+          quantity,
+          price,
+        })),
+        description: description,
+        status: 'pending',
+        timestamp: Date.now(),
+      };
 
-const statusContainer = document.getElementById('order-status-container');
-const statusLight = document.getElementById('order-status-light');
-const statusText = document.getElementById('order-status-text');
+      push(ordersRef, newOrder)
+        .then(() => {
+          alert('Order placed successfully!');
+          // Reset order form
+          for (const id in orderSelections) {
+            orderSelections[id].selected = false;
+            orderSelections[id].quantity = 0;
+          }
+          orderDescriptionInput.value = '';
+          document.getElementById('table-number').value = '';
+          updateOrderSummary();
 
-onValue(ordersRef, (snapshot) => {
-  const orders = snapshot.val();
-  if (!orders) {
-    statusContainer.style.display = 'none';
-    return;
-  }
-  statusContainer.style.display = 'flex';
+          // Uncheck checkboxes and reset quantities in UI
+          document.querySelectorAll('.menu-item input[type="checkbox"]').forEach((cb) => (cb.checked = false));
+          document.querySelectorAll('.menu-item input[type="number"]').forEach((input) => {
+            input.value = 0;
+            input.disabled = true;
+          });
+        })
+        .catch((e) => alert('Failed to place order: ' + e.message));
+    });
 
-  let hasPending = false;
-  let hasProcessing = false;
-  let hasCompleted = false;
+    // --- Real-time Kitchen Order Status Bar (filtered by entered table number) ---
+    const statusContainer = document.getElementById('order-status-container');
+    const statusLight = document.getElementById('order-status-light');
+    const statusText = document.getElementById('order-status-text');
+    const tableInput = document.getElementById('table-number');
 
-  for (const key in orders) {
-    const order = orders[key];
-    if (order.status === 'pending') hasPending = true;
-    else if (order.status === 'processing') hasProcessing = true;
-    else if (order.status === 'completed') hasCompleted = true;
-  }
+    function updateStatusForTable(tableNumber) {
+      onValue(ordersRef, (snapshot) => {
+        const orders = snapshot.val();
+        if (!orders || !tableNumber) {
+          statusContainer.style.display = 'none';
+          return;
+        }
+        // Filter orders for this table only, exclude cancelled
+        const tableOrders = Object.values(orders).filter(o => 
+          o.tableNumber == tableNumber && o.status !== 'cancelled'
+        );
+        if (tableOrders.length === 0) {
+          statusContainer.style.display = 'flex';
+          statusText.textContent = 'Order Status: No Active Orders';
+          statusLight.style.backgroundColor = 'grey';
+          statusLight.style.animationPlayState = 'paused';
+          statusLight.style.opacity = '0.5';
+          return;
+        }
 
-  if (hasPending) {
-    statusText.textContent = 'Order Status: Pending';
-    statusLight.style.backgroundColor = '#fbc02d'; // yellow
-    statusLight.style.animationDuration = '1.5s';
-    statusLight.style.animationPlayState = 'running';
-  } else if (hasProcessing) {
-    statusText.textContent = 'Order Status: Processing';
-    statusLight.style.backgroundColor = '#1976d2'; // blue
-    statusLight.style.animationDuration = '1s';
-    statusLight.style.animationPlayState = 'running';
-  } else if (hasCompleted) {
-    statusText.textContent = 'Order Status: Completed';
-    statusLight.style.backgroundColor = '#388e3c'; // green
-    statusLight.style.animationPlayState = 'paused';
-    statusLight.style.opacity = '1';
-  } else {
-    statusText.textContent = 'Order Status: No Active Orders';
-    statusLight.style.backgroundColor = 'grey';
-    statusLight.style.animationPlayState = 'paused';
-    statusLight.style.opacity = '0.5';
-  }
-});
-  </script>
-</body>
-</html>
-      
+        // Prioritize status display: pending > processing > completed
+        let hasPending = tableOrders.some(o => o.status === 'pending');
+        let hasProcessing = tableOrders.some(o => o.status === 'processing');
+        let hasCompleted = tableOrders.some(o => o.status === 'completed');
+
+        statusContainer.style.display = 'flex';
+        if (hasPending) {
+          statusText.textContent = 'Order Status: Pending';
+          statusLight.style.backgroundColor = '#fbc02d'; // yellow
+          statusLight.style.animationDuration = '1.5s';
+          statusLight.style.animationPlayState = 'running';
+          statusLight.style.opacity = '1';
+        } else if (hasProcessing) {
+          statusText.textContent = 'Order Status: Processing';
+          statusLight.style.backgroundColor = '#1976d2'; // blue
+          statusLight.style.animationDuration = '1s';
+          statusLight.style.animationPlayState = 'running';
+          statusLight.style.opacity = '1';
+        } else if (hasCompleted) {
+          statusText.textContent = 'Order Status: Completed';
+          statusLight.style.backgroundColor = '#388e3c'; // green
+          statusLight.style.animationPlayState = 'paused';
+          statusLight.style.opacity = '1';
+        } else {
+          statusText.textContent = 'Order Status: No Active Orders';
+          statusLight.style.backgroundColor = 'grey';
+          statusLight.style.animationPlayState = 'paused';
+       
