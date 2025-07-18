@@ -8,26 +8,20 @@
       font-family: "Segoe UI", sans-serif;
       background: #f5f5f5;
       margin: 0;
-      padding: 20px 0 56px 0; /* bottom padding for nav */
+      padding: 20px 0 56px 0;
     }
-
     h1 {
       color: #4e342e;
       text-align: center;
       margin-bottom: 20px;
     }
-
     #orders, #history {
       display: flex;
       flex-direction: column;
       gap: 12px;
       padding: 0 20px;
     }
-
-    #history {
-      display: none;
-    }
-
+    #history { display: none; }
     .order-card {
       background: white;
       border-radius: 8px;
@@ -36,19 +30,16 @@
       border-left: 5px solid #8bc34a;
       transition: border-color 0.3s;
     }
-
     .order-header {
       font-weight: bold;
       font-size: 16px;
       margin-bottom: 4px;
     }
-
     .order-info {
       margin-bottom: 8px;
       color: #333;
       white-space: pre-line;
     }
-
     .status-buttons button {
       margin-right: 6px;
       padding: 5px 10px;
@@ -56,13 +47,10 @@
       border: none;
       border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s;
     }
-
     .pending { background: #ffcc80; }
     .processing { background: #81d4fa; }
     .completed { background: #aed581; }
-
     #logout {
       position: fixed;
       top: 15px;
@@ -75,7 +63,6 @@
       cursor: pointer;
       z-index: 999;
     }
-
     .bottom-nav {
       position: fixed;
       bottom: 0;
@@ -87,13 +74,10 @@
       display: flex;
       justify-content: space-around;
       align-items: center;
-      box-shadow: 0 -2px 5px rgba(0,0,0,0.2);
       z-index: 999;
       font-size: 20px;
       color: #ddd;
-      user-select: none;
     }
-
     .nav-button {
       flex-grow: 1;
       text-align: center;
@@ -102,22 +86,21 @@
       transition: color 0.3s, border-top 0.3s;
       font-weight: 600;
     }
-
     .nav-button.active {
       color: #f0e6d2;
       border-top: 3px solid #8bc34a;
       font-weight: 700;
     }
-
     #history .status-buttons {
       display: none;
     }
   </style>
 </head>
 <body>
-
   <h1>👨‍🍳 Kitchen Dashboard</h1>
   <button id="logout">Logout</button>
+
+  <audio id="notifySound" src="https://www.myinstants.com/media/sounds/bleep.mp3" preload="auto"></audio>
 
   <div id="orders"></div>
   <div id="history"></div>
@@ -149,7 +132,7 @@
       authDomain: "digital-menu-wooden.firebaseapp.com",
       databaseURL: "https://digital-menu-wooden-default-rtdb.firebaseio.com",
       projectId: "digital-menu-wooden",
-      storageBucket: "digital-menu-wooden.firebasestorage.app",
+      storageBucket: "digital-menu-wooden.appspot.com",
       messagingSenderId: "776717051891",
       appId: "1:776717051891:web:c52bc347ba84434e839486"
     };
@@ -164,16 +147,26 @@
     const ordersDiv = document.getElementById('orders');
     const historyDiv = document.getElementById('history');
     const logoutBtn = document.getElementById('logout');
+    const notifySound = document.getElementById('notifySound');
+
+    function playNotificationSound() {
+      try {
+        notifySound.currentTime = 0;
+        notifySound.play();
+      } catch (err) {
+        console.warn("Sound failed:", err);
+      }
+    }
 
     logoutBtn.addEventListener('click', () => {
       signOut(auth).then(() => {
-        window.location.href = 'login.html';
+        window.location.href = 'kitchen-login.html';
       });
     });
 
     onAuthStateChanged(auth, (user) => {
       if (!user) {
-        window.location.href = "login.html";
+        window.location.href = "kitchen-login.html";
       }
     });
 
@@ -187,26 +180,19 @@
     }
 
     function createOrderCard(order, key, showStatusButtons = true) {
-      let orderName = order.name;
-      if (!orderName && order.items && order.items.length > 0) {
-        orderName = order.items[0].name || "Unnamed Item";
-      } else if (!orderName) {
-        orderName = "Unnamed Item";
-      }
-
+      let orderName = order.name || (order.items?.[0]?.name) || "Unnamed Item";
       let priceDisplay = '';
+
       if (order.price) {
         priceDisplay = `Price: Rs. ${order.price}`;
-      } else if (order.items && order.items.length > 0) {
+      } else if (order.items?.length > 0) {
         const totalPrice = order.items.reduce((sum, i) => sum + ((i.price || 0) * (i.quantity || 1)), 0);
         priceDisplay = `Total Price: Rs. ${totalPrice}\nDetails:\n${formatItems(order.items)}`;
       } else {
         priceDisplay = "Price: N/A";
       }
 
-      const time = new Date(order.timestamp).toLocaleTimeString();
-
-      // Fix: Check both order.table and order.tableNumber for table display
+      const time = order.timestamp ? new Date(order.timestamp).toLocaleTimeString() : 'Unknown';
       const tableNumber = order.table || order.tableNumber || 'N/A';
 
       const div = document.createElement('div');
@@ -264,6 +250,7 @@
         const card = createOrderCard(order, key, true);
         ordersDiv.appendChild(card);
         sortOrderCards(ordersDiv);
+        playNotificationSound(); // 🔔
       }
     });
 
@@ -278,6 +265,7 @@
       const order = snapshot.val();
       const key = snapshot.key;
       completedMap[key] = order;
+
       if (currentView === 'history') {
         const card = createOrderCard(order, key, false);
         historyDiv.appendChild(card);
@@ -304,7 +292,6 @@
 
     const btnOrders = document.getElementById('btnOrders');
     const btnHistory = document.getElementById('btnHistory');
-
     let currentView = 'orders';
 
     btnOrders.addEventListener('click', () => {
@@ -344,7 +331,6 @@
       }
       sortOrderCards(historyDiv);
     }
-
   </script>
 </body>
 </html>
