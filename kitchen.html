@@ -209,6 +209,7 @@
         <div class="order-header">${orderName} – Table ${tableNumber}</div>
         <div class="order-info">${priceDisplay.replace(/\n/g, '<br>')}</div>
         <div class="order-info">🕒 ${time}</div>
+        <div class="order-info">📋 Notes: ${order.note || order.description || "None"}</div>
         ${showStatusButtons ? `
           <div class="status-buttons">
             <button class="pending">Pending</button>
