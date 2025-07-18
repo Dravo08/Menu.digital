@@ -432,7 +432,7 @@
     const existingOrdersDiv = document.getElementById('existing-orders');
     const orderDescriptionInput = document.getElementById('order-description');
 
-    // Load and display existing orders with status and cancel option
+    // Updated loadExistingOrders function with partial quantity cancellation
     function loadExistingOrders() {
       onValue(ordersRef, (snapshot) => {
         const data = snapshot.val() || {};
@@ -449,9 +449,10 @@
           div.style.padding = '6px 8px';
           div.style.borderBottom = '1px solid #ccc';
           div.style.display = 'flex';
-          div.style.justifyContent = 'space-between';
-          div.style.alignItems = 'center';
+          div.style.flexDirection = 'column';
+          div.style.gap = '6px';
 
+          // Order summary line
           let orderText = `Table ${order.tableNumber} | ${new Date(order.timestamp).toLocaleString()} | Status: ${
             order.status || 'pending'
           }`;
@@ -464,41 +465,87 @@
 
           const leftDiv = document.createElement('div');
           leftDiv.textContent = orderText;
-
-          // Show items summary
-          if (order.items && Array.isArray(order.items)) {
-            const itemsSummary = order.items.map((i) => `${i.name} x${i.quantity}`).join(', ');
-            const itemsDiv = document.createElement('div');
-            itemsDiv.style.fontSize = '0.85rem';
-            itemsDiv.style.color = '#555';
-            itemsDiv.textContent = `Items: ${itemsSummary}`;
-            leftDiv.appendChild(document.createElement('br'));
-            leftDiv.appendChild(itemsDiv);
-          }
-
           div.appendChild(leftDiv);
 
-          // Cancel button only if not cancelled or completed
-          if (order.status !== 'cancelled' && order.status !== 'completed') {
-            const cancelBtn = document.createElement('button');
-            cancelBtn.textContent = 'Cancel Order';
-            cancelBtn.style.background = '#e53935';
-            cancelBtn.style.color = '#fff';
-            cancelBtn.style.border = 'none';
-            cancelBtn.style.borderRadius = '4px';
-            cancelBtn.style.padding = '4px 8px';
-            cancelBtn.style.cursor = 'pointer';
-            cancelBtn.style.fontSize = '0.8rem';
+          // Items list with quantities and cancellation input if allowed
+          if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+            order.items.forEach((item, idx) => {
+              const itemRow = document.createElement('div');
+              itemRow.style.display = 'flex';
+              itemRow.style.justifyContent = 'space-between';
+              itemRow.style.alignItems = 'center';
+              itemRow.style.gap = '10px';
 
-            cancelBtn.onclick = () => {
-              if (confirm('Are you sure you want to cancel this order?')) {
-                update(ref(db, `orders/${id}`), { status: 'cancelled', timestamp: Date.now() }).catch((e) =>
-                  alert('Failed to cancel order: ' + e.message)
-                );
+              const itemLabel = document.createElement('div');
+              itemLabel.textContent = `${item.name} x ${item.quantity}`;
+              itemRow.appendChild(itemLabel);
+
+              // If order is active, show cancel partial qty input
+              if (order.status !== 'cancelled' && order.status !== 'completed') {
+                const cancelInput = document.createElement('input');
+                cancelInput.type = 'number';
+                cancelInput.min = 0;
+                cancelInput.max = item.quantity;
+                cancelInput.value = 0;
+                cancelInput.style.width = '60px';
+
+                const cancelBtn = document.createElement('button');
+                cancelBtn.textContent = 'Cancel Qty';
+                cancelBtn.style.background = '#e53935';
+                cancelBtn.style.color = '#fff';
+                cancelBtn.style.border = 'none';
+                cancelBtn.style.borderRadius = '4px';
+                cancelBtn.style.padding = '4px 8px';
+                cancelBtn.style.cursor = 'pointer';
+                cancelBtn.style.fontSize = '0.8rem';
+
+                cancelBtn.onclick = () => {
+                  const qtyToCancel = Number(cancelInput.value);
+                  if (isNaN(qtyToCancel) || qtyToCancel <= 0) {
+                    alert('Enter a valid quantity to cancel.');
+                    return;
+                  }
+                  if (qtyToCancel > item.quantity) {
+                    alert(`Cannot cancel more than ordered quantity (${item.quantity}).`);
+                    return;
+                  }
+
+                  // Prepare updated items array
+                  const updatedItems = order.items.map((itm, i) => {
+                    if (i === idx) {
+                      const newQty = itm.quantity - qtyToCancel;
+                      if (newQty > 0) {
+                        return { ...itm, quantity: newQty };
+                      } else {
+                        return null; // remove item if qty 0
+                      }
+                    }
+                    return itm;
+                  }).filter(Boolean);
+
+                  // Determine new status
+                  const newStatus = updatedItems.length === 0 ? 'cancelled' : order.status;
+
+                  update(ref(db, `orders/${id}`), {
+                    items: updatedItems,
+                    status: newStatus,
+                    timestamp: Date.now(),
+                  })
+                    .then(() => {
+                      alert(`Cancelled ${qtyToCancel} unit(s) of "${item.name}".`);
+                      cancelInput.value = 0;
+                    })
+                    .catch((e) => {
+                      alert('Failed to update order: ' + e.message);
+                    });
+                };
+
+                itemRow.appendChild(cancelInput);
+                itemRow.appendChild(cancelBtn);
               }
-            };
 
-            div.appendChild(cancelBtn);
+              div.appendChild(itemRow);
+            });
           }
 
           existingOrdersDiv.appendChild(div);
@@ -513,7 +560,7 @@
       const selectedItems = Object.values(orderSelections).filter((item) => item.selected && item.quantity > 0);
       const description = orderDescriptionInput.value.trim();
 
-      if (!tableNumber || Number(tableNumber) < 1) {
+     if (!tableNumber || Number(tableNumber) < 1) {
         alert('Please enter a valid table number.');
         return;
       }
@@ -540,4 +587,4 @@
     });
   </script>
 </body>
-</html>
+  </html>
