@@ -1,47 +1,47 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html><html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wooden Garden – Owner Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
   <style>
     :root {
-      --primary: #5d4037;
+      --primary: #4e342e;
       --accent: #8bc34a;
-      --bg: #f5f5dc;
-      --text: #333;
+      --bg: #f9f5ec;
+      --text: #3e2723;
       --white: #fff;
+      --wood-pattern: url('https://www.transparenttextures.com/patterns/wood-pattern.png');
     }
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Segoe UI', sans-serif;
+      font-family: 'Quicksand', sans-serif;
     }
     body {
-      background: var(--bg);
+      background: var(--bg) var(--wood-pattern);
       color: var(--text);
       padding-bottom: 60px;
     }
     .wood-header {
-      background: repeating-linear-gradient(
-        45deg,
-        #8d6e63,
-        #8d6e63 10px,
-        #5d4037 10px,
-        #5d4037 20px
-      );
+      background: linear-gradient(to right, #6d4c41, #5d4037);
       color: #fff8e1;
-      font-size: 1.4rem;
-      padding: 12px 20px;
+      font-size: 1.6rem;
+      padding: 16px 20px;
       text-align: center;
-      font-weight: bold;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-      user-select: none;
+      font-weight: 700;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     }
     .section {
       display: none;
-      padding: 16px;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.85);
+      margin: 16px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
     }
     .active {
       display: block;
@@ -55,156 +55,128 @@
       display: flex;
       justify-content: space-around;
       align-items: center;
-      padding: 6px 0;
-      box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.2);
-      user-select: none;
+      padding: 8px 0;
+      box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.3);
       z-index: 1000;
+      border-top-left-radius: 16px;
+      border-top-right-radius: 16px;
     }
     .nav-button {
       flex: 1;
       padding: 10px 0;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--white);
       text-align: center;
-      border: none;
       background: none;
-      outline: none;
+      border: none;
       cursor: pointer;
       transition: background-color 0.3s ease;
     }
     .nav-button.active {
       background: #795548;
       border-radius: 10px;
-      font-weight: bold;
+      font-weight: 700;
+    }
+    h2 {
+      color: var(--primary);
+      margin-bottom: 12px;
     }
     .order-entry {
       background: var(--white);
       border-radius: 10px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
-      padding: 12px;
-      margin-bottom: 12px;
-      cursor: pointer;
-      user-select: none;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      padding: 14px;
+      margin-bottom: 14px;
     }
     .order-entry h4 {
       margin-bottom: 8px;
-      font-size: 1rem;
-      color: var(--primary);
+      color: #6d4c41;
     }
     .order-details {
       font-size: 0.9rem;
       color: #555;
-      margin-top: 6px;
     }
     .menu-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
-      margin-top: 12px;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 14px;
     }
     .menu-card {
       background: var(--white);
       border-radius: 10px;
-      padding: 12px;
-      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+      padding: 14px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      user-select: none;
+      gap: 8px;
     }
     .menu-card input {
-      width: 100%;
-      padding: 6px;
-      font-size: 1rem;
+      padding: 8px;
       border: 1px solid #ccc;
       border-radius: 6px;
-      box-sizing: border-box;
     }
     .menu-card button {
-      width: 48%;
-      padding: 6px 0;
+      padding: 8px;
       border: none;
       border-radius: 6px;
-      font-size: 0.9rem;
-      cursor: pointer;
-      transition: background-color 0.25s ease;
+      font-weight: bold;
     }
-    .menu-card .save-btn {
+    .save-btn {
       background: var(--accent);
-      color: #fff;
+      color: white;
     }
-    .menu-card .save-btn:hover {
+    .save-btn:hover {
       background: #7cb342;
     }
-    .menu-card .delete-btn {
-      background: #e53935;
-      color: #fff;
+    .delete-btn {
+      background: #d32f2f;
+      color: white;
     }
-    .menu-card .delete-btn:hover {
-      background: #c62828;
+    .delete-btn:hover {
+      background: #b71c1c;
+    }
+    #add-menu-form input, #add-menu-form button {
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 1rem;
     }
     #add-menu-form {
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-top: 8px;
-    }
-    #add-menu-form input {
-      flex: 1 1 150px;
-      padding: 8px;
-      font-size: 1rem;
-      border: 1px solid #ccc;
-      border-radius: 6px;
     }
     #add-menu-form button {
       background: var(--primary);
       color: white;
       border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      flex: 0 0 auto;
     }
     #add-menu-form button:hover {
       background: #4e342e;
     }
     .filter-bar {
-      margin-bottom: 10px;
       display: flex;
+      flex-wrap: wrap;
       align-items: center;
       gap: 10px;
-      flex-wrap: wrap;
-    }
-    .filter-bar label {
-      font-weight: bold;
-      color: var(--primary);
+      margin-bottom: 16px;
     }
     .filter-bar input[type="date"] {
-      padding: 6px;
+      padding: 8px;
       border-radius: 6px;
       border: 1px solid #ccc;
-      font-size: 1rem;
-      flex: 0 0 auto;
     }
     #ordersCount {
-      font-weight: bold;
-      color: var(--primary);
-      padding: 6px 10px;
+      background: #efebe9;
       border: 1px solid var(--primary);
+      padding: 6px 12px;
       border-radius: 6px;
-      background: #f0f0f0;
-      user-select: none;
     }
     #deleteOrdersDayBtn {
       background: #e53935;
-      color: #fff;
+      color: white;
       border: none;
       padding: 6px 12px;
       border-radius: 6px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-      flex: 0 0 auto;
     }
     #deleteOrdersDayBtn:hover {
       background: #c62828;
@@ -212,14 +184,10 @@
   </style>
 </head>
 <body>
-  <header class="wood-header">🌿 Wooden Garden – Owner Panel</header>
-
-  <div id="totalSales" class="section active">
+  <header class="wood-header">🌿 Wooden Garden – Owner Panel</header>  <div class="section active" id="sales-section">
     <h2>💲 Today's Total Sales</h2>
     <p id="sales-summary">Loading...</p>
-  </div>
-
-  <div id="orderHistory" class="section">
+  </div>  <div class="section" id="orders-section">
     <h2>📖 Order History (Today)</h2>
     <div class="filter-bar">
       <label for="filterDate">Filter by Date:</label>
@@ -230,9 +198,9 @@
       <span id="ordersCount">Completed Orders: 0</span>
     </div>
     <div id="orders"></div>
-  </div>
-
-  <div id="addItems" class="section">
+    <h3 style="margin-top:20px">❌ Cancelled Orders</h3>
+    <div id="cancelled-orders"></div>
+  </div>  <div class="section" id="add-section">
     <h2>✏️ Add New Menu Item</h2>
     <form id="add-menu-form">
       <input type="text" id="new-name" placeholder="Item Name" required />
@@ -240,281 +208,15 @@
       <input type="text" id="new-category" placeholder="Category" required />
       <button type="submit">Add Item</button>
     </form>
-  </div>
-
-  <div id="salesHistory" class="section">
+    <div class="menu-grid" id="menu"></div>
+  </div>  <div class="section" id="history-section">
     <h2>📅📊 Sales History</h2>
     <div id="sales-history">Coming soon...</div>
-  </div>
-
-  <nav class="nav-bar">
-    <button class="nav-button active" data-section="totalSales">💲<br>Sales</button>
-    <button class="nav-button" data-section="orderHistory">📖<br>Orders</button>
-    <button class="nav-button" data-section="addItems">➕<br>Add</button>
-    <button class="nav-button" data-section="salesHistory">📅<br>History</button>
-    <button class="nav-button" id="logoutBtn">⏏️<br>Logout</button>
-  </nav>
-
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
-    import { getDatabase, ref, onValue, get, push, update, remove } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyATGDe4NI75RSny4ZbE3WDtaUoUivjv3E8",
-      authDomain: "digital-menu-wooden.firebaseapp.com",
-      databaseURL: "https://digital-menu-wooden-default-rtdb.firebaseio.com",
-      projectId: "digital-menu-wooden",
-      storageBucket: "digital-menu-wooden.firebasestorage.app",
-      messagingSenderId: "776717051891",
-      appId: "1:776717051891:web:c52bc347ba84434e839486",
-      measurementId: "G-12S0DC6EMT"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
-    const auth = getAuth();
-
-    onAuthStateChanged(auth, user => {
-      if (!user) {
-        window.location.href = 'login.html';
-      }
-    });
-
-    const sections = document.querySelectorAll('.section');
-    const navButtons = document.querySelectorAll('.nav-button');
-    const salesSummary = document.getElementById('sales-summary');
-    const ordersDiv = document.getElementById('orders');
-    const ordersCountSpan = document.getElementById('ordersCount');
-    let menuDiv = document.getElementById('menu');
-    const salesHistoryDiv = document.getElementById('sales-history');
-
-    navButtons.forEach(button => {
-      button.addEventListener('click', () => {
-        if (button.id === 'logoutBtn') {
-          signOut(auth).then(() => window.location.href = 'login.html');
-          return;
-        }
-        const sectionId = button.dataset.section;
-        sections.forEach(s => s.classList.remove('active'));
-        document.getElementById(sectionId).classList.add('active');
-        navButtons.forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-      });
-    });
-
-    const ordersRef = ref(db, 'completedOrders');
-    const menuRef = ref(db, 'menu');
-
-    function formatDate(date) {
-      const y = date.getFullYear();
-      const m = ('0' + (date.getMonth() + 1)).slice(-2);
-      const d = ('0' + date.getDate()).slice(-2);
-      return `${y}-${m}-${d}`;
-    }
-
-    function loadSalesAndOrders(filterDate) {
-      onValue(ordersRef, snapshot => {
-        const data = snapshot.val() || {};
-        let totalSales = 0;
-        let totalOrdersCount = 0;
-        ordersDiv.innerHTML = '';
-
-        const todayStr = filterDate || formatDate(new Date());
-
-        for (const id in data) {
-          const order = data[id];
-          if (!order.timestamp) continue;
-          const orderDate = new Date(order.timestamp);
-          const orderDateStr = formatDate(orderDate);
-
-          if (orderDateStr === todayStr) {
-            totalOrdersCount++;
-
-            let totalOrderPrice = 0;
-
-            if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-              order.items.forEach(item => {
-                const qty = Number(item.quantity) || 1;
-                const price = Number(item.price) || 0;
-                totalOrderPrice += price * qty;
-              });
-            } else {
-              const qty = Number(order.quantity) || 1;
-              const price = Number(order.price) || 0;
-              totalOrderPrice += price * qty;
-            }
-
-            totalSales += totalOrderPrice;
-
-            let itemsHtml = '';
-            if (order.items && Array.isArray(order.items) && order.items.length > 0) {
-              order.items.forEach(item => {
-                const itemTotal = (Number(item.price) || 0) * (Number(item.quantity) || 1);
-                itemsHtml += `
-                  <div>
-                    <strong>${item.name || 'Unnamed Item'}</strong> - Qty: ${item.quantity || 1} | Unit Price: Rs. ${Number(item.price).toFixed(2)} | Total: Rs. ${itemTotal.toFixed(2)}
-                  </div>
-                `;
-              });
-            } else {
-              itemsHtml = `
-                <div>
-                  <strong>${order.name || order.itemName || order.item || 'Unknown Item'}</strong> - Qty: ${order.quantity || 1} | Unit Price: Rs. ${(totalOrderPrice / (order.quantity || 1)).toFixed(2)} | Total: Rs. ${totalOrderPrice.toFixed(2)}
-                </div>
-              `;
-            }
-
-            const div = document.createElement('div');
-            div.className = 'order-entry';
-            div.innerHTML = `
-              <h4>Order ID: ${id}</h4>
-              <div class="order-details">
-                ${itemsHtml}
-                <hr />
-                <div><strong>Order Total:</strong> Rs. ${totalOrderPrice.toFixed(2)}</div>
-                <small>${orderDate.toLocaleString()}</small>
-              </div>
-            `;
-            ordersDiv.prepend(div);
-          }
-        }
-
-        salesSummary.innerText = `Rs. ${totalSales.toFixed(2)} (from ${totalOrdersCount} completed order${totalOrdersCount !== 1 ? 's' : ''} on ${todayStr})`;
-        ordersCountSpan.innerText = `Completed Orders: ${totalOrdersCount}`;
-      });
-    }
-
-    loadSalesAndOrders();
-
-    document.getElementById('filterBtn').addEventListener('click', () => {
-      const filterDate = document.getElementById('filterDate').value;
-      if (filterDate) {
-        loadSalesAndOrders(filterDate);
-      } else {
-        alert('Please select a date to filter.');
-      }
-    });
-
-    document.getElementById('clearFilterBtn').addEventListener('click', () => {
-      document.getElementById('filterDate').value = '';
-      loadSalesAndOrders();
-    });
-
-    // Delete orders of selected day
-    document.getElementById('deleteOrdersDayBtn').addEventListener('click', async () => {
-      const selectedDate = document.getElementById('filterDate').value;
-      if (!selectedDate) {
-        alert('Please select a date first to delete orders.');
-        return;
-      }
-      if (!confirm(`Are you sure you want to DELETE ALL orders of ${selectedDate}? This action cannot be undone.`)) {
-        return;
-      }
-
-      try {
-        const snapshot = await get(ordersRef);
-        const data = snapshot.val() || {};
-        const updates = {};
-
-        for (const id in data) {
-          const order = data[id];
-          if (!order.timestamp) continue;
-          const orderDateStr = new Date(order.timestamp).toISOString().slice(0, 10);
-          if (orderDateStr === selectedDate) {
-            updates[id] = null; // mark for deletion
-          }
-        }
-
-        if (Object.keys(updates).length === 0) {
-          alert('No orders found for the selected date.');
-          return;
-        }
-
-        await update(ordersRef, updates);
-        alert('Orders deleted successfully.');
-        loadSalesAndOrders(selectedDate);
-      } catch (err) {
-        console.error('Error deleting orders:', err);
-        alert('Failed to delete orders.');
-      }
-    });
-
-    function loadMenu() {
-      onValue(menuRef, snapshot => {
-        const data = snapshot.val() || {};
-        let menuHTML = '';
-        for (const id in data) {
-          const item = data[id];
-          menuHTML += `
-            <div class="menu-card" data-id="${id}">
-              <input type="text" class="menu-name" value="${item.name}" placeholder="Name" />
-              <input type="number" class="menu-price" value="${item.price}" min="0" placeholder="Price" />
-              <input type="text" class="menu-category" value="${item.category}" placeholder="Category" />
-              <div style="display:flex; gap:8px; justify-content:center; margin-top:6px;">
-                <button class="save-btn">Save</button>
-                <button class="delete-btn">Delete</button>
-              </div>
-            </div>
-          `;
-        }
-        if (!menuDiv) {
-          menuDiv = document.createElement('div');
-          menuDiv.id = 'menu';
-          document.getElementById('addItems').appendChild(menuDiv);
-        }
-        menuDiv.innerHTML = menuHTML;
-
-        menuDiv.querySelectorAll('.save-btn').forEach(btn => {
-          btn.onclick = () => {
-            const card = btn.closest('.menu-card');
-            const id = card.dataset.id;
-            const name = card.querySelector('.menu-name').value.trim();
-            const price = parseFloat(card.querySelector('.menu-price').value);
-            const category = card.querySelector('.menu-category').value.trim();
-            if (!name || isNaN(price) || !category) {
-              alert('Please fill all fields correctly.');
-              return;
-            }
-            update(ref(db, `menu/${id}`), { name, price, category })
-              .then(() => alert('Updated successfully'))
-              .catch(e => alert('Update failed: ' + e.message));
-          };
-        });
-
-        menuDiv.querySelectorAll('.delete-btn').forEach(btn => {
-          btn.onclick = () => {
-            const card = btn.closest('.menu-card');
-            const id = card.dataset.id;
-            if (confirm('Are you sure you want to delete this item?')) {
-              remove(ref(db, `menu/${id}`))
-                .catch(e => alert('Delete failed: ' + e.message));
-            }
-          };
-        });
-      });
-    }
-
-    loadMenu();
-
-    document.getElementById('add-menu-form').onsubmit = e => {
-      e.preventDefault();
-      const name = document.getElementById('new-name').value.trim();
-      const price = parseFloat(document.getElementById('new-price').value);
-      const category = document.getElementById('new-category').value.trim();
-
-      if (!name || isNaN(price) || !category) {
-        alert('Please fill all fields correctly.');
-        return;
-      }
-
-      push(menuRef, { name, price, category })
-        .then(() => {
-          alert('Menu item added successfully!');
-          e.target.reset();
-        })
-        .catch(err => alert('Failed to add item: ' + err.message));
-    };
-  </script>
-</body>
-</html>
+  </div>  <nav class="nav-bar">
+    <button class="nav-button active" data-section="0">💲<br>Sales</button>
+    <button class="nav-button" data-section="1">📖<br>Orders</button>
+    <button class="nav-button" data-section="2">➕<br>Add</button>
+    <button class="nav-button" data-section="3">📅<br>History</button>
+    <button class="nav-button" onclick="alert('Logged out successfully!')">⏏️<br>Logout</button>
+  </nav>  <script src="firebase-app-config.js"></script>  <script src="owner-panel-logic.js"></script></body>
+            </html>
