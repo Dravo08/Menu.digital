@@ -136,6 +136,8 @@
       overflow-y: auto;
       position: sticky;
       top: 30px;
+      display: flex;
+      flex-direction: column;
     }
 
     #order-summary h2 {
@@ -144,6 +146,7 @@
 
     #order-items {
       margin: 10px 0;
+      flex-grow: 0;
     }
 
     .order-item {
@@ -174,12 +177,31 @@
       cursor: pointer;
     }
 
-    /* NEW: Order status bar style */
-    #order-status-bar {
+    /* Status bar container */
+    #order-status-container {
       margin-top: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
       font-weight: bold;
       color: #4e7d5b;
       min-height: 24px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+    /* The flashing light circle */
+    #order-status-light {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background-color: grey;
+      animation: blink 1.5s infinite;
+      flex-shrink: 0;
+    }
+    /* blink animation */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
     }
 
     .order-fab {
@@ -252,8 +274,11 @@
       />
       <button id="place-order-btn" disabled>Place Order</button>
 
-      <!-- NEW: Order Status Bar -->
-      <div id="order-status-bar"></div>
+      <!-- Added Order Status Bar -->
+      <div id="order-status-container" title="Real-time Kitchen Order Status" style="display:none;">
+        <div id="order-status-light"></div>
+        <div id="order-status-text">Order Status: N/A</div>
+      </div>
 
       <hr style="margin:20px 0;" />
 
@@ -286,7 +311,6 @@
     const searchBar = document.getElementById('search-bar');
 
     const orderSelections = {};
-    const orderStatusBar = document.getElementById('order-status-bar');
 
     function updateOrderSummary() {
       const orderItemsDiv = document.getElementById('order-items');
@@ -331,7 +355,7 @@
             <label><input type="checkbox" id="select-${id}"> Add</label>
             <label>
               Qty:
-              <button type="button" class="qty-btn" data-action="decrease"></button>
+              <button type="button" class="qty-btn" data-action="decrease">−</button>
               <input type="number" id="qty-${id}" min="0" value="0" disabled>
               <button type="button" class="qty-btn" data-action="increase">+</button>
             </label>
@@ -520,54 +544,6 @@
 
     loadExistingOrders();
 
-    // NEW: Store last order key and listen for status updates in real-time
-    function saveLastOrderKey(key) {
-      localStorage.setItem('lastOrderKey', key);
-    }
-
-    function getLastOrderKey() {
-      return localStorage.getItem('lastOrderKey');
-    }
-
-    function listenToOrderStatus(orderKey) {
-      if (!orderKey) {
-        orderStatusBar.textContent = "";
-        return;
-      }
-      const orderRef = ref(db, `orders/${orderKey}`);
-      onValue(orderRef, (snapshot) => {
-        const order = snapshot.val();
-        if (!order) {
-          orderStatusBar.textContent = "Order no longer available.";
-          return;
-        }
-        let statusText = "Order Status: ";
-        switch (order.status) {
-          case "pending":
-            statusText += "Pending";
-            orderStatusBar.style.color = "#ffcc80"; // amber
-            break;
-          case "processing":
-            statusText += "Processing";
-            orderStatusBar.style.color = "#81d4fa"; // blue
-            break;
-          case "completed":
-            statusText += "Completed";
-            orderStatusBar.style.color = "#aed581"; // green
-            break;
-          case "cancelled":
-            statusText += "Cancelled";
-            orderStatusBar.style.color = "#e53935"; // red
-            break;
-          default:
-            statusText += order.status || "Unknown";
-            orderStatusBar.style.color = "#4e7d5b";
-            break;
-        }
-        orderStatusBar.textContent = statusText;
-      });
-    }
-
     document.getElementById('place-order-btn').addEventListener('click', () => {
       const tableNumber = document.getElementById('table-number').value.trim();
       const selectedItems = Object.values(orderSelections).filter((item) => item.selected && item.quantity > 0);
@@ -575,37 +551,100 @@
 
       if (!tableNumber || Number(tableNumber) < 1) {
         alert('Please enter a valid table number.');
-        return;
-      }
-      if (selectedItems.length === 0) {
-        alert('Please select at least one item.');
+      
         return;
       }
 
-      const orderPayload = {
-        tableNumber,
-        items: selectedItems.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
-        totalPrice: selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0),
+      if (selectedItems.length === 0) {
+        alert('Please select at least one menu item.');
+        return;
+      }
+
+      const newOrder = {
+        tableNumber: Number(tableNumber),
+        items: selectedItems.map(({ name, quantity, price }) => ({
+          name,
+          quantity,
+          price,
+        })),
+        description: description,
+        status: 'pending',
         timestamp: Date.now(),
-        description: description || '',
-        status: 'pending', // New orders start as pending
       };
 
-      push(ordersRef, orderPayload)
-        .then((ref) => {
-          alert('Order placed!');
-          saveLastOrderKey(ref.key);  // Save order key locally
-          listenToOrderStatus(ref.key); // Start listening to status in real-time
-          location.reload();
+      push(ordersRef, newOrder)
+        .then(() => {
+          alert('Order placed successfully!');
+          // Reset order form
+          for (const id in orderSelections) {
+            orderSelections[id].selected = false;
+            orderSelections[id].quantity = 0;
+          }
+          orderDescriptionInput.value = '';
+          document.getElementById('table-number').value = '';
+          updateOrderSummary();
+
+          // Uncheck checkboxes and reset quantities in UI
+          document.querySelectorAll('.menu-item input[type="checkbox"]').forEach((cb) => (cb.checked = false));
+          document.querySelectorAll('.menu-item input[type="number"]').forEach((input) => {
+            input.value = 0;
+            input.disabled = true;
+          });
         })
-        .catch((err) => alert('Failed to place order: ' + err.message));
+        .catch((e) => alert('Failed to place order: ' + e.message));
     });
 
-    // On load, listen to last order status if any
-    window.addEventListener('load', () => {
-      const lastKey = getLastOrderKey();
-      listenToOrderStatus(lastKey);
+    // --- New: Real-time Kitchen Order Status Bar ---
+
+    const statusContainer = document.getElementById('order-status-container');
+    const statusLight = document.getElementById('order-status-light');
+    const statusText = document.getElementById('order-status-text');
+
+    // Show status bar only when orders exist
+    onValue(ordersRef, (snapshot) => {
+      const orders = snapshot.val();
+      if (!orders) {
+        statusContainer.style.display = 'none';
+        return;
+      }
+      statusContainer.style.display = 'flex';
+
+      // Aggregate order statuses for the kitchen display:
+      // If any pending or processing orders, show that, else completed or cancelled.
+      let hasPending = false;
+      let hasProcessing = false;
+      let hasCompleted = false;
+
+      for (const key in orders) {
+        const order = orders[key];
+        if (order.status === 'pending') hasPending = true;
+        else if (order.status === 'processing') hasProcessing = true;
+        else if (order.status === 'completed') hasCompleted = true;
+      }
+
+      if (hasPending) {
+        statusText.textContent = 'Order Status: Pending';
+        statusLight.style.backgroundColor = '#fbc02d'; // yellow
+        statusLight.style.animationDuration = '1.5s';
+        statusLight.style.animationPlayState = 'running';
+      } else if (hasProcessing) {
+        statusText.textContent = 'Order Status: Processing';
+        statusLight.style.backgroundColor = '#1976d2'; // blue
+        statusLight.style.animationDuration = '1s';
+        statusLight.style.animationPlayState = 'running';
+      } else if (hasCompleted) {
+        statusText.textContent = 'Order Status: Completed';
+        statusLight.style.backgroundColor = '#388e3c'; // green
+        // steady light (no blinking)
+        statusLight.style.animationPlayState = 'paused';
+        statusLight.style.opacity = '1';
+      } else {
+        statusText.textContent = 'Order Status: No Active Orders';
+        statusLight.style.backgroundColor = 'grey';
+        statusLight.style.animationPlayState = 'paused';
+        statusLight.style.opacity = '0.5';
+      }
     });
   </script>
 </body>
-</html>
+  </html>
