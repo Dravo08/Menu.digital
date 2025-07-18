@@ -14,7 +14,6 @@
       display: flex;
       flex-direction: column;
     }
-
     header {
       text-align: center;
       padding: 20px;
@@ -79,8 +78,6 @@
       transform: translateY(-4px);
       box-shadow: 0 8px 16px rgba(78, 125, 91, 0.35);
     }
-
-    /* Removed image styles */
 
     .menu-content {
       padding: 15px;
@@ -218,31 +215,59 @@
     <p>Fresh flavors from nature’s heart</p>
   </header>
 
-  <input id="search-bar" placeholder="Search for food...">
+  <input id="search-bar" placeholder="Search for food..." />
 
   <main>
     <div class="menu-container" id="menu"></div>
 
     <aside id="order-summary">
       <h2>Your Order</h2>
-      <div id="order-items">
-        <p>No items selected.</p>
-      </div>
-      <div id="total-price">Total: Rs. 0</div>
-      <input type="number" id="table-number" placeholder="Table Number">
+      <div id="order-items"><p>No items selected.</p></div>
+
+      <label for="order-description" style="display:block; margin-top: 15px; font-weight: bold;">
+        Add Description (e.g., "Make it spicy"):
+      </label>
+      <textarea
+        id="order-description"
+        rows="3"
+        style="width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #ccc; resize: vertical;"
+        placeholder="Add special instructions..."
+      ></textarea>
+
+      <div id="total-price" style="margin-top:10px; font-weight:bold;">Total: Rs. 0</div>
+      <input
+        type="number"
+        id="table-number"
+        placeholder="Table Number"
+        min="1"
+        style="margin-top:15px;"
+      />
       <button id="place-order-btn" disabled>Place Order</button>
+
+      <hr style="margin:20px 0;" />
+
+      <h3>Existing Orders</h3>
+      <div
+        id="existing-orders"
+        style="max-height: 200px; overflow-y: auto; font-size: 0.9rem; color: #333;"
+      >
+        <p>No previous orders.</p>
+      </div>
     </aside>
   </main>
 
-  <div class="order-fab" onclick="document.getElementById('order-summary').scrollIntoView({behavior: 'smooth'})">🛒</div>
+  <div
+    class="order-fab"
+    onclick="document.getElementById('order-summary').scrollIntoView({behavior: 'smooth'})"
+  >
+    
+  </div>
 
-  <footer>
-    Wooden Garden &copy; 2025
-  </footer>
+  <footer>Wooden Garden &copy; 2025</footer>
 
   <script type="module">
     import { db } from './firebase.js';
-    import { ref, onValue, push } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js";
+    import { ref, onValue, push, update, remove } from 'https://www.gstatic.com/firebasejs/10.4.0/firebase-database.js';
 
     const menuRef = ref(db, 'menu');
     const ordersRef = ref(db, 'orders');
@@ -257,7 +282,9 @@
       const placeOrderBtn = document.getElementById('place-order-btn');
       const tableInput = document.getElementById('table-number');
 
-      const selectedItems = Object.values(orderSelections).filter(item => item.selected && item.quantity > 0);
+      const selectedItems = Object.values(orderSelections).filter(
+        (item) => item.selected && item.quantity > 0
+      );
 
       if (selectedItems.length === 0) {
         orderItemsDiv.innerHTML = '<p>No items selected.</p>';
@@ -268,7 +295,7 @@
 
       orderItemsDiv.innerHTML = '';
       let total = 0;
-      selectedItems.forEach(item => {
+      selectedItems.forEach((item) => {
         const itemDiv = document.createElement('div');
         itemDiv.className = 'order-item';
         itemDiv.textContent = `${item.name} x ${item.quantity}`;
@@ -292,7 +319,7 @@
             <label><input type="checkbox" id="select-${id}"> Add</label>
             <label>
               Qty:
-              <button type="button" class="qty-btn" data-action="decrease">−</button>
+              <button type="button" class="qty-btn" data-action="decrease"></button>
               <input type="number" id="qty-${id}" min="0" value="0" disabled>
               <button type="button" class="qty-btn" data-action="increase">+</button>
             </label>
@@ -374,28 +401,142 @@
 
     document.getElementById('table-number').addEventListener('input', updateOrderSummary);
 
-    document.getElementById('place-order-btn').addEventListener('click', () => {
-      const tableNumber = document.getElementById('table-number').value;
-      const selectedItems = Object.values(orderSelections).filter(item => item.selected && item.quantity > 0);
-      const orderPayload = {
-        tableNumber,
-        items: selectedItems.map(i => ({ name: i.name, quantity: i.quantity, price: i.price })),
-        totalPrice: selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0),
-        timestamp: Date.now(),
-      };
-      push(ordersRef, orderPayload).then(() => {
-        alert('Order placed!');
-        location.reload();
-      });
-    });
-
     searchBar.addEventListener('input', () => {
       const q = searchBar.value.toLowerCase();
       const items = document.querySelectorAll('.menu-item');
-      items.forEach(item => {
+      items.forEach((item) => {
         const name = item.querySelector('h2').textContent.toLowerCase();
         item.style.display = name.includes(q) ? '' : 'none';
       });
+    });
+
+    // Auto-remove cancelled orders older than 1 day
+    function cleanupOldCancelledOrders() {
+      onValue(
+        ordersRef,
+        (snapshot) => {
+          const data = snapshot.val() || {};
+          const now = Date.now();
+          for (const id in data) {
+            const order = data[id];
+            if (order.status === 'cancelled' && now - order.timestamp > 24 * 60 * 60 * 1000) {
+              remove(ref(db, `orders/${id}`));
+            }
+          }
+        },
+        { onlyOnce: true }
+      );
+    }
+    cleanupOldCancelledOrders();
+
+    const existingOrdersDiv = document.getElementById('existing-orders');
+    const orderDescriptionInput = document.getElementById('order-description');
+
+    // Load and display existing orders with status and cancel option
+    function loadExistingOrders() {
+      onValue(ordersRef, (snapshot) => {
+        const data = snapshot.val() || {};
+        existingOrdersDiv.innerHTML = '';
+        const ordersArray = Object.entries(data).sort((a, b) => b[1].timestamp - a[1].timestamp);
+
+        if (ordersArray.length === 0) {
+          existingOrdersDiv.innerHTML = '<p>No previous orders.</p>';
+          return;
+        }
+
+        ordersArray.forEach(([id, order]) => {
+          const div = document.createElement('div');
+          div.style.padding = '6px 8px';
+          div.style.borderBottom = '1px solid #ccc';
+          div.style.display = 'flex';
+          div.style.justifyContent = 'space-between';
+          div.style.alignItems = 'center';
+
+          let orderText = `Table ${order.tableNumber} | ${new Date(order.timestamp).toLocaleString()} | Status: ${
+            order.status || 'pending'
+          }`;
+
+          if (order.status === 'cancelled') {
+            div.style.color = '#888';
+            div.style.textDecoration = 'line-through';
+            orderText += ' (Cancelled)';
+          }
+
+          const leftDiv = document.createElement('div');
+          leftDiv.textContent = orderText;
+
+          // Show items summary
+          if (order.items && Array.isArray(order.items)) {
+            const itemsSummary = order.items.map((i) => `${i.name} x${i.quantity}`).join(', ');
+            const itemsDiv = document.createElement('div');
+            itemsDiv.style.fontSize = '0.85rem';
+            itemsDiv.style.color = '#555';
+            itemsDiv.textContent = `Items: ${itemsSummary}`;
+            leftDiv.appendChild(document.createElement('br'));
+            leftDiv.appendChild(itemsDiv);
+          }
+
+          div.appendChild(leftDiv);
+
+          // Cancel button only if not cancelled or completed
+          if (order.status !== 'cancelled' && order.status !== 'completed') {
+            const cancelBtn = document.createElement('button');
+            cancelBtn.textContent = 'Cancel Order';
+            cancelBtn.style.background = '#e53935';
+            cancelBtn.style.color = '#fff';
+            cancelBtn.style.border = 'none';
+            cancelBtn.style.borderRadius = '4px';
+            cancelBtn.style.padding = '4px 8px';
+            cancelBtn.style.cursor = 'pointer';
+            cancelBtn.style.fontSize = '0.8rem';
+
+            cancelBtn.onclick = () => {
+              if (confirm('Are you sure you want to cancel this order?')) {
+                update(ref(db, `orders/${id}`), { status: 'cancelled', timestamp: Date.now() }).catch((e) =>
+                  alert('Failed to cancel order: ' + e.message)
+                );
+              }
+            };
+
+            div.appendChild(cancelBtn);
+          }
+
+          existingOrdersDiv.appendChild(div);
+        });
+      });
+    }
+
+    loadExistingOrders();
+
+    document.getElementById('place-order-btn').addEventListener('click', () => {
+      const tableNumber = document.getElementById('table-number').value.trim();
+      const selectedItems = Object.values(orderSelections).filter((item) => item.selected && item.quantity > 0);
+      const description = orderDescriptionInput.value.trim();
+
+      if (!tableNumber || Number(tableNumber) < 1) {
+        alert('Please enter a valid table number.');
+        return;
+      }
+      if (selectedItems.length === 0) {
+        alert('Please select at least one item.');
+        return;
+      }
+
+      const orderPayload = {
+        tableNumber,
+        items: selectedItems.map((i) => ({ name: i.name, quantity: i.quantity, price: i.price })),
+        totalPrice: selectedItems.reduce((sum, i) => sum + i.price * i.quantity, 0),
+        timestamp: Date.now(),
+        description: description || '',
+        status: 'pending', // New orders start as pending
+      };
+
+      push(ordersRef, orderPayload)
+        .then(() => {
+          alert('Order placed!');
+          location.reload();
+        })
+        .catch((err) => alert('Failed to place order: ' + err.message));
     });
   </script>
 </body>
