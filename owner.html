@@ -858,7 +858,138 @@ addMenuForm.addEventListener('submit', async e => {
     });
 
     // ====== MENU MANAGEMENT SECTION LOGIC ======
+const menuRef = ref(db, 'menu');
+const menuContainer = document.getElementById('menu');
+const addMenuForm = document.getElementById('add-menu-form');
 
+function createMenuCard(key, item) {
+  const card = document.createElement('div');
+  card.className = 'menu-card';
+  card.innerHTML = `
+    <input type="text" class="name-input" value="${item.name}" aria-label="Menu item name" />
+    <input type="number" step="0.01" class="price-input" value="${item.price}" min="0" aria-label="Menu item price" />
+    <input type="text" class="category-input" value="${item.category}" aria-label="Menu item category" />
+    <div style="display:flex; justify-content:space-between;">
+      <button class="save-btn" aria-label="Save menu item changes">Save</button>
+      <button class="delete-btn" aria-label="Delete this menu item">Delete</button>
+    </div>
+  `;
+
+  const nameInput = card.querySelector('.name-input');
+  const priceInput = card.querySelector('.price-input');
+  const categoryInput = card.querySelector('.category-input');
+  const saveBtn = card.querySelector('.save-btn');
+  const deleteBtn = card.querySelector('.delete-btn');
+
+  saveBtn.addEventListener('click', async () => {
+    const newName = nameInput.value.trim();
+    const newPrice = parseFloat(priceInput.value);
+    const newCategory = categoryInput.value.trim();
+
+    console.log('=== SAVE DEBUG ===');
+    console.log('Key:', key);
+    console.log('New Name:', newName);
+    console.log('New Price:', newPrice);
+    console.log('New Category:', newCategory);
+
+    if (!newName || isNaN(newPrice) || newPrice < 0 || !newCategory) {
+      alert('Please fill in all fields correctly.');
+      return;
+    }
+
+    try {
+      saveBtn.disabled = true;
+      console.log('Calling update()...');
+      await update(ref(db, `menu/${key}`), {
+        name: newName,
+        price: newPrice,
+        category: newCategory
+      });
+      alert('Item updated.');
+    } catch (error) {
+      alert('Failed to update item.');
+      console.error('Update error:', error);
+    } finally {
+      saveBtn.disabled = false;
+      console.log('Reloading menu items...');
+      loadMenuItems();
+    }
+  });
+
+  deleteBtn.addEventListener('click', async () => {
+    if (!confirm('Are you sure you want to delete this menu item?')) return;
+    try {
+      deleteBtn.disabled = true;
+      console.log('Deleting item with key:', key);
+      await remove(ref(db, `menu/${key}`));
+      alert('Item deleted.');
+      loadMenuItems();
+    } catch (error) {
+      alert('Failed to delete item.');
+      console.error('Delete error:', error);
+    } finally {
+      deleteBtn.disabled = false;
+    }
+  });
+
+  return card;
+}
+
+async function loadMenuItems() {
+  console.log('Loading menu items...');
+  try {
+    const snapshot = await get(menuRef);
+    const data = snapshot.val() || {};
+    console.log('Menu data:', data);
+    menuContainer.innerHTML = '';
+
+    if (Object.keys(data).length === 0) {
+      menuContainer.innerHTML = '<p>No menu items found.</p>';
+      return;
+    }
+
+    Object.entries(data).forEach(([key, item]) => {
+      console.log('Creating card for:', key, item);
+      const card = createMenuCard(key, item);
+      menuContainer.appendChild(card);
+    });
+  } catch (err) {
+    menuContainer.innerHTML = '<p>Error loading menu items.</p>';
+    console.error('Error loading menu items:', err);
+  }
+}
+
+addMenuForm.addEventListener('submit', async e => {
+  e.preventDefault();
+  const name = document.getElementById('new-name').value.trim();
+  const price = parseFloat(document.getElementById('new-price').value);
+  const category = document.getElementById('new-category').value.trim();
+
+  console.log('=== ADD DEBUG ===');
+  console.log('Name:', name);
+  console.log('Price:', price);
+  console.log('Category:', category);
+
+  if (!name || isNaN(price) || price < 0 || !category) {
+    alert('Please enter valid data.');
+    return;
+  }
+
+  try {
+    const submitBtn = addMenuForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+    console.log('Pushing new item...');
+    await push(menuRef, { name, price, category });
+    alert('New menu item added.');
+    addMenuForm.reset();
+    loadMenuItems();
+  } catch (err) {
+    alert('Failed to add new item.');
+    console.error('Add menu item error:', err);
+  } finally {
+    addMenuForm.querySelector('button[type="submit"]').disabled = false;
+  }
+});
 
 
     // ====== SALES HISTORY SECTION LOGIC ======
