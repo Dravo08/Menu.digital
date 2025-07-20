@@ -583,14 +583,8 @@ function updateChart(labels, data, rawDates) {
 
     // Format timestamp to readable date/time
     function formatDate(ts) {
-      if (!ts) return 'Unknown date';
-      const d = new Date(ts);
-      return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-    }
-
-    // Render orders list
-function renderOrders(ordersObj) {
-  if (!ordersObj || Object.keys(ordersObj).length === 0) {
+      if (!ts)function renderOrders(allOrders) {
+  if (!allOrders || Object.keys(allOrders).length === 0) {
     ordersContainer.innerHTML = '<p>No orders found for selected date.</p>';
     ordersCountEl.innerText = 'Completed Orders: 0';
     cancelledCountEl.innerText = 'Cancelled Orders: 0';
@@ -598,11 +592,21 @@ function renderOrders(ordersObj) {
     return;
   }
 
+  // Get today's local date string
+  const today = new Date();
+  const todayString = today.toLocaleDateString(); // e.g. "7/20/2025"
+
   let completedCount = 0;
   let cancelledCount = 0;
   let html = '';
 
-  Object.entries(ordersObj).forEach(([key, order]) => {
+  Object.entries(allOrders).forEach(([key, order]) => {
+    const orderDate = new Date(order.timestamp);
+    const orderDateString = orderDate.toLocaleDateString();
+
+    // Only include orders from today
+    if (orderDateString !== todayString) return;
+
     const statusClass = order.status === 'cancelled' ? 'cancelled' : '';
     if (order.status === 'cancelled') cancelledCount++;
     else completedCount++;
@@ -645,7 +649,83 @@ function renderOrders(ordersObj) {
     </div>`;
   });
 
-  ordersContainer.innerHTML = html;
+  ordersContainer.innerHTML = html || '<p>No orders found for today.</p>';
+  ordersCountEl.innerText = `Completed Orders: ${completedCount}`;
+  cancelledCountEl.innerText = `Cancelled Orders: ${cancelledCount}`;
+  deleteOrdersDayBtn.disabled = completedCount === 0;
+    } return 'Unknown date';
+      const d = new Date(ts);
+      return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+    }
+
+    // Render orders list
+function renderOrders(allOrders) {
+  if (!allOrders || Object.keys(allOrders).length === 0) {
+    ordersContainer.innerHTML = '<p>No orders found for selected date.</p>';
+    ordersCountEl.innerText = 'Completed Orders: 0';
+    cancelledCountEl.innerText = 'Cancelled Orders: 0';
+    deleteOrdersDayBtn.disabled = true;
+    return;
+  }
+
+  // Get today's local date string
+  const today = new Date();
+  const todayString = today.toLocaleDateString(); // e.g. "7/20/2025"
+
+  let completedCount = 0;
+  let cancelledCount = 0;
+  let html = '';
+
+  Object.entries(allOrders).forEach(([key, order]) => {
+    const orderDate = new Date(order.timestamp);
+    const orderDateString = orderDate.toLocaleDateString();
+
+    // Only include orders from today
+    if (orderDateString !== todayString) return;
+
+    const statusClass = order.status === 'cancelled' ? 'cancelled' : '';
+    if (order.status === 'cancelled') cancelledCount++;
+    else completedCount++;
+
+    let orderTotal = 0;
+
+    if (Array.isArray(order.items)) {
+      order.items.forEach(item => {
+        const qty = Number(item.quantity) || 1;
+        const price = Number(item.price) || 0;
+        orderTotal += qty * price;
+      });
+    } else if (order.name) {
+      const qty = Number(order.quantity) || 1;
+      const price = Number(order.price) || 0;
+      orderTotal += qty * price;
+    }
+
+    html += `<div class="order-entry ${statusClass}" tabindex="0" aria-label="Order ${key}, status: ${order.status || 'unknown'}">
+      <h4>Order ID: ${key}</h4>
+      <div class="order-details">
+        <strong>Date:</strong> ${formatDate(order.timestamp)}<br />
+        <strong>Status:</strong> ${order.status || 'N/A'}<br />
+        <strong>Items:</strong><br />
+        <ul>`;
+
+    if (Array.isArray(order.items)) {
+      order.items.forEach(item => {
+        html += `<li>${item.name || 'Unnamed'} — Qty: ${item.quantity || 1}, Price: Rs. ${item.price || '0.00'}</li>`;
+      });
+    } else if (order.name) {
+      html += `<li>${order.name} — Qty: ${order.quantity || 1}, Price: Rs. ${order.price || '0.00'}</li>`;
+    } else {
+      html += `<li>No items info</li>`;
+    }
+
+    html += `</ul>
+        <strong>Total:</strong> Rs. ${orderTotal.toFixed(2)}
+      </div>
+    </div>`;
+  });
+
+  ordersContainer.innerHTML = html || '<p>No orders found for today.</p>';
   ordersCountEl.innerText = `Completed Orders: ${completedCount}`;
   cancelledCountEl.innerText = `Cancelled Orders: ${cancelledCount}`;
   deleteOrdersDayBtn.disabled = completedCount === 0;
@@ -666,31 +746,41 @@ function renderOrders(ordersObj) {
 
     // Filter orders by selected date
     function filterOrdersByDate(dateStr) {
-      if (!dateStr) return filteredOrders;
+  if (!dateStr) return filteredOrders;
 
-      const filtered = {};
-      Object.entries(filteredOrders).forEach(([key, order]) => {
-        const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
-        if (orderDate === dateStr) filtered[key] = order;
-      });
-      return filtered;
-    }
+  const filtered = {};
+  Object.entries(filteredOrders).forEach(([key, order]) => {
+    const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
+    if (orderDate === dateStr) filtered[key] = order;
+  });
+  return filtered;
+}
 
-    filterBtn.addEventListener('click', () => {
-      selectedDate = filterDateInput.value;
-      if (!selectedDate) {
-        alert('Please select a date to filter.');
-        return;
-      }
-      const filtered = filterOrdersByDate(selectedDate);
-      renderOrders(filtered);
-    });
+filterBtn.addEventListener('click', () => {
+  selectedDate = filterDateInput.value;
+  if (!selectedDate) {
+    alert('Please select a date to filter.');
+    return;
+  }
+  const filtered = filterOrdersByDate(selectedDate);
+  renderOrders(filtered);
+});
 
-    clearFilterBtn.addEventListener('click', () => {
-      filterDateInput.value = '';
-      selectedDate = null;
-      renderOrders(filteredOrders);
-    });
+clearFilterBtn.addEventListener('click', () => {
+  filterDateInput.value = '';
+  selectedDate = null;
+  renderOrders(filteredOrders);
+});
+
+// Show today's orders when page loads
+window.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+  const todayOrders = filterOrdersByDate(today);
+  renderOrders(todayOrders);
+
+  filterDateInput.value = today; // set date picker to today
+  selectedDate = today;
+});
 
     // Delete all completed orders of selected day
     deleteOrdersDayBtn.addEventListener('click', async () => {
