@@ -571,38 +571,36 @@ function updateChart(labels, data, rawDates) {
     // ====== ORDER HISTORY SECTION LOGIC ======
 
   const ordersContainer = document.getElementById('orders');
-    const filterDateInput = document.getElementById('filterDate');
-    const filterBtn = document.getElementById('filterBtn');
-    const clearFilterBtn = document.getElementById('clearFilterBtn');
-    const deleteOrdersDayBtn = document.getElementById('deleteOrdersDayBtn');
-    const ordersCountEl = document.getElementById('ordersCount');
-    const cancelledCountEl = document.getElementById('cancelledCount');
+const filterDateInput = document.getElementById('filterDate');
+const filterBtn = document.getElementById('filterBtn');
+const clearFilterBtn = document.getElementById('clearFilterBtn');
+const deleteOrdersDayBtn = document.getElementById('deleteOrdersDayBtn');
+const ordersCountEl = document.getElementById('ordersCount');
+const cancelledCountEl = document.getElementById('cancelledCount');
 
-    let filteredOrders = {};
-    let selectedDate = null;
+let filteredOrders = {};
+let selectedDate = null;
 
-    // Format timestamp to readable date/time
-    function formatDate(ts) {
-      if (!ts) return 'Unknown date';
-      const d = new Date(ts);
-      return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-    }
+// Format timestamp to readable date/time
+function formatDate(ts) {
+  if (!ts) return 'Unknown date';
+  const d = new Date(ts);
+  return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+}
 
-    // Render orders list
-function renderOrders(ordersObj) {
-  if (!ordersObj || Object.keys(ordersObj).length === 0) {
-    ordersContainer.innerHTML = '<p>No orders found for selected date.</p>';
-    ordersCountEl.innerText = 'Completed Orders: 0';
-    cancelledCountEl.innerText = 'Cancelled Orders: 0';
-    deleteOrdersDayBtn.disabled = true;
-    return;
-  }
+// Render orders list
+function renderOrders(allOrders, filterToDate = null) {
+  const today = new Date().toISOString().slice(0, 10);
+  const targetDate = filterToDate || today;
 
   let completedCount = 0;
   let cancelledCount = 0;
   let html = '';
 
-  Object.entries(ordersObj).forEach(([key, order]) => {
+  Object.entries(allOrders).forEach(([key, order]) => {
+    const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
+    if (orderDate !== targetDate) return;
+
     const statusClass = order.status === 'cancelled' ? 'cancelled' : '';
     if (order.status === 'cancelled') cancelledCount++;
     else completedCount++;
@@ -621,7 +619,7 @@ function renderOrders(ordersObj) {
       orderTotal += qty * price;
     }
 
-    html += `<div class="order-entry ${statusClass}" tabindex="0" aria-label="Order ${key}, status: ${order.status || 'unknown'}">
+    html += `<div class="order-entry ${statusClass}" tabindex="0">
       <h4>Order ID: ${key}</h4>
       <div class="order-details">
         <strong>Date:</strong> ${formatDate(order.timestamp)}<br />
@@ -631,10 +629,10 @@ function renderOrders(ordersObj) {
 
     if (Array.isArray(order.items)) {
       order.items.forEach(item => {
-        html += `<li>${item.name || 'Unnamed'} â€” Qty: ${item.quantity || 1}, Price: Rs. ${item.price || '0.00'}</li>`;
+        html += `<li>${item.name || 'Unnamed'} — Qty: ${item.quantity || 1}, Price: Rs. ${item.price || '0.00'}</li>`;
       });
     } else if (order.name) {
-      html += `<li>${order.name} â€” Qty: ${order.quantity || 1}, Price: Rs. ${order.price || '0.00'}</li>`;
+      html += `<li>${order.name} — Qty: ${order.quantity || 1}, Price: Rs. ${order.price || '0.00'}</li>`;
     } else {
       html += `<li>No items info</li>`;
     }
@@ -645,87 +643,89 @@ function renderOrders(ordersObj) {
     </div>`;
   });
 
-  ordersContainer.innerHTML = html;
+  ordersContainer.innerHTML = html || `<p>No orders found for ${targetDate}.</p>`;
   ordersCountEl.innerText = `Completed Orders: ${completedCount}`;
   cancelledCountEl.innerText = `Cancelled Orders: ${cancelledCount}`;
   deleteOrdersDayBtn.disabled = completedCount === 0;
 }
 
-    // Load all orders once
-    async function loadAllOrders() {
-      try {
-        const snapshot = await get(ordersRef);
-        const data = snapshot.val() || {};
-        filteredOrders = data;
-        renderOrders(data);
-      } catch (err) {
-        console.error('Failed to load orders:', err);
-        ordersContainer.innerHTML = '<p>Error loading orders.</p>';
-      }
-    }
+// Load all orders once
+async function loadAllOrders() {
+  try {
+    const snapshot = await get(ordersRef);
+    const data = snapshot.val() || {};
+    filteredOrders = data;
 
-    // Filter orders by selected date
-    function filterOrdersByDate(dateStr) {
-      if (!dateStr) return filteredOrders;
+    const today = new Date().toISOString().slice(0, 10);
+    renderOrders(data, today);
+    filterDateInput.value = today;
+    selectedDate = today;
+  } catch (err) {
+    console.error('Failed to load orders:', err);
+    ordersContainer.innerHTML = '<p>Error loading orders.</p>';
+  }
+}
 
-      const filtered = {};
-      Object.entries(filteredOrders).forEach(([key, order]) => {
-        const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
-        if (orderDate === dateStr) filtered[key] = order;
-      });
-      return filtered;
-    }
+// Filter orders by selected date
+function filterOrdersByDate(dateStr) {
+  if (!dateStr) return filteredOrders;
 
-    filterBtn.addEventListener('click', () => {
-      selectedDate = filterDateInput.value;
-      if (!selectedDate) {
-        alert('Please select a date to filter.');
-        return;
-      }
-      const filtered = filterOrdersByDate(selectedDate);
-      renderOrders(filtered);
-    });
+  const filtered = {};
+  Object.entries(filteredOrders).forEach(([key, order]) => {
+    const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
+    if (orderDate === dateStr) filtered[key] = order;
+  });
+  return filtered;
+}
 
-    clearFilterBtn.addEventListener('click', () => {
-      filterDateInput.value = '';
-      selectedDate = null;
-      renderOrders(filteredOrders);
-    });
+filterBtn.addEventListener('click', () => {
+  selectedDate = filterDateInput.value;
+  if (!selectedDate) {
+    alert('Please select a date to filter.');
+    return;
+  }
+  renderOrders(filteredOrders, selectedDate);
+});
 
-    // Delete all completed orders of selected day
-    deleteOrdersDayBtn.addEventListener('click', async () => {
-      if (!selectedDate) {
-        alert('Select a date first.');
-        return;
-      }
-      if (!confirm(`Are you sure you want to delete ALL completed orders of ${selectedDate}? This action cannot be undone.`)) return;
+clearFilterBtn.addEventListener('click', () => {
+  const today = new Date().toISOString().slice(0, 10);
+  filterDateInput.value = today;
+  selectedDate = today;
+  renderOrders(filteredOrders, today);
+});
 
-      try {
-        const snapshot = await get(ordersRef);
-        const data = snapshot.val() || {};
+// Delete all completed orders of selected day
+deleteOrdersDayBtn.addEventListener('click', async () => {
+  if (!selectedDate) {
+    alert('Select a date first.');
+    return;
+  }
+  if (!confirm(`Are you sure you want to delete ALL completed orders of ${selectedDate}? This action cannot be undone.`)) return;
 
-        const updates = {};
-        Object.entries(data).forEach(([key, order]) => {
-          const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
-          if (orderDate === selectedDate && order.status !== 'cancelled') {
-            updates[key] = null; // delete this order
-          }
-        });
+  try {
+    const snapshot = await get(ordersRef);
+    const data = snapshot.val() || {};
 
-        await update(ref(db, 'completedOrders'), updates);
-
-        alert(`Deleted completed orders on ${selectedDate}`);
-        await loadAllOrders();
-
-        if (selectedDate) {
-          renderOrders(filterOrdersByDate(selectedDate));
-        }
-      } catch (err) {
-        console.error('Error deleting orders:', err);
-        alert('Failed to delete orders.');
+    const updates = {};
+    Object.entries(data).forEach(([key, order]) => {
+      const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
+      if (orderDate === selectedDate && order.status !== 'cancelled') {
+        updates[key] = null;
       }
     });
-    
+
+    await update(ref(db, 'completedOrders'), updates);
+    alert(`Deleted completed orders on ${selectedDate}`);
+    await loadAllOrders();
+    renderOrders(filteredOrders, selectedDate);
+  } catch (err) {
+    console.error('Error deleting orders:', err);
+    alert('Failed to delete orders.');
+  }
+});
+
+// Show today's orders on page load
+window.addEventListener('DOMContentLoaded', loadAllOrders);
 
     // ====== MENU MANAGEMENT SECTION LOGIC ======
 const menuRef = ref(db, 'menu');
