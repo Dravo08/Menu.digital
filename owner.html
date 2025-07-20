@@ -546,7 +546,7 @@ function updateChart(labels, data, rawDates) {
               const price = Number(i.price) || 0;
               orderTotal += qty * price;
             });
-          } else {
+        } else {
             orderTotal = (Number(order.quantity) || 1) * (Number(order.price) || 0);
           }
 
@@ -570,7 +570,7 @@ function updateChart(labels, data, rawDates) {
 
     // ====== ORDER HISTORY SECTION LOGIC ======
 
-    const ordersContainer = document.getElementById('orders');
+  const ordersContainer = document.getElementById('orders');
     const filterDateInput = document.getElementById('filterDate');
     const filterBtn = document.getElementById('filterBtn');
     const clearFilterBtn = document.getElementById('clearFilterBtn');
@@ -583,84 +583,14 @@ function updateChart(labels, data, rawDates) {
 
     // Format timestamp to readable date/time
     function formatDate(ts) {
-      if (!ts)function renderOrders(allOrders) {
-  if (!allOrders || Object.keys(allOrders).length === 0) {
-    ordersContainer.innerHTML = '<p>No orders found for selected date.</p>';
-    ordersCountEl.innerText = 'Completed Orders: 0';
-    cancelledCountEl.innerText = 'Cancelled Orders: 0';
-    deleteOrdersDayBtn.disabled = true;
-    return;
-  }
-
-  // Get today's local date string
-  const today = new Date();
-  const todayString = today.toLocaleDateString(); // e.g. "7/20/2025"
-
-  let completedCount = 0;
-  let cancelledCount = 0;
-  let html = '';
-
-  Object.entries(allOrders).forEach(([key, order]) => {
-    const orderDate = new Date(order.timestamp);
-    const orderDateString = orderDate.toLocaleDateString();
-
-    // Only include orders from today
-    if (orderDateString !== todayString) return;
-
-    const statusClass = order.status === 'cancelled' ? 'cancelled' : '';
-    if (order.status === 'cancelled') cancelledCount++;
-    else completedCount++;
-
-    let orderTotal = 0;
-
-    if (Array.isArray(order.items)) {
-      order.items.forEach(item => {
-        const qty = Number(item.quantity) || 1;
-        const price = Number(item.price) || 0;
-        orderTotal += qty * price;
-      });
-    } else if (order.name) {
-      const qty = Number(order.quantity) || 1;
-      const price = Number(order.price) || 0;
-      orderTotal += qty * price;
-    }
-
-    html += `<div class="order-entry ${statusClass}" tabindex="0" aria-label="Order ${key}, status: ${order.status || 'unknown'}">
-      <h4>Order ID: ${key}</h4>
-      <div class="order-details">
-        <strong>Date:</strong> ${formatDate(order.timestamp)}<br />
-        <strong>Status:</strong> ${order.status || 'N/A'}<br />
-        <strong>Items:</strong><br />
-        <ul>`;
-
-    if (Array.isArray(order.items)) {
-      order.items.forEach(item => {
-        html += `<li>${item.name || 'Unnamed'} — Qty: ${item.quantity || 1}, Price: Rs. ${item.price || '0.00'}</li>`;
-      });
-    } else if (order.name) {
-      html += `<li>${order.name} — Qty: ${order.quantity || 1}, Price: Rs. ${order.price || '0.00'}</li>`;
-    } else {
-      html += `<li>No items info</li>`;
-    }
-
-    html += `</ul>
-        <strong>Total:</strong> Rs. ${orderTotal.toFixed(2)}
-      </div>
-    </div>`;
-  });
-
-  ordersContainer.innerHTML = html || '<p>No orders found for today.</p>';
-  ordersCountEl.innerText = `Completed Orders: ${completedCount}`;
-  cancelledCountEl.innerText = `Cancelled Orders: ${cancelledCount}`;
-  deleteOrdersDayBtn.disabled = completedCount === 0;
-    } return 'Unknown date';
+      if (!ts) return 'Unknown date';
       const d = new Date(ts);
       return d.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
     }
 
     // Render orders list
-function renderOrders(allOrders) {
-  if (!allOrders || Object.keys(allOrders).length === 0) {
+function renderOrders(ordersObj) {
+  if (!ordersObj || Object.keys(ordersObj).length === 0) {
     ordersContainer.innerHTML = '<p>No orders found for selected date.</p>';
     ordersCountEl.innerText = 'Completed Orders: 0';
     cancelledCountEl.innerText = 'Cancelled Orders: 0';
@@ -668,21 +598,11 @@ function renderOrders(allOrders) {
     return;
   }
 
-  // Get today's local date string
-  const today = new Date();
-  const todayString = today.toLocaleDateString(); // e.g. "7/20/2025"
-
   let completedCount = 0;
   let cancelledCount = 0;
   let html = '';
 
-  Object.entries(allOrders).forEach(([key, order]) => {
-    const orderDate = new Date(order.timestamp);
-    const orderDateString = orderDate.toLocaleDateString();
-
-    // Only include orders from today
-    if (orderDateString !== todayString) return;
-
+  Object.entries(ordersObj).forEach(([key, order]) => {
     const statusClass = order.status === 'cancelled' ? 'cancelled' : '';
     if (order.status === 'cancelled') cancelledCount++;
     else completedCount++;
@@ -711,10 +631,10 @@ function renderOrders(allOrders) {
 
     if (Array.isArray(order.items)) {
       order.items.forEach(item => {
-        html += `<li>${item.name || 'Unnamed'} — Qty: ${item.quantity || 1}, Price: Rs. ${item.price || '0.00'}</li>`;
+        html += `<li>${item.name || 'Unnamed'} â€” Qty: ${item.quantity || 1}, Price: Rs. ${item.price || '0.00'}</li>`;
       });
     } else if (order.name) {
-      html += `<li>${order.name} — Qty: ${order.quantity || 1}, Price: Rs. ${order.price || '0.00'}</li>`;
+      html += `<li>${order.name} â€” Qty: ${order.quantity || 1}, Price: Rs. ${order.price || '0.00'}</li>`;
     } else {
       html += `<li>No items info</li>`;
     }
@@ -725,7 +645,7 @@ function renderOrders(allOrders) {
     </div>`;
   });
 
-  ordersContainer.innerHTML = html || '<p>No orders found for today.</p>';
+  ordersContainer.innerHTML = html;
   ordersCountEl.innerText = `Completed Orders: ${completedCount}`;
   cancelledCountEl.innerText = `Cancelled Orders: ${cancelledCount}`;
   deleteOrdersDayBtn.disabled = completedCount === 0;
@@ -746,41 +666,31 @@ function renderOrders(allOrders) {
 
     // Filter orders by selected date
     function filterOrdersByDate(dateStr) {
-  if (!dateStr) return filteredOrders;
+      if (!dateStr) return filteredOrders;
 
-  const filtered = {};
-  Object.entries(filteredOrders).forEach(([key, order]) => {
-    const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
-    if (orderDate === dateStr) filtered[key] = order;
-  });
-  return filtered;
-}
+      const filtered = {};
+      Object.entries(filteredOrders).forEach(([key, order]) => {
+        const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
+        if (orderDate === dateStr) filtered[key] = order;
+      });
+      return filtered;
+    }
 
-filterBtn.addEventListener('click', () => {
-  selectedDate = filterDateInput.value;
-  if (!selectedDate) {
-    alert('Please select a date to filter.');
-    return;
-  }
-  const filtered = filterOrdersByDate(selectedDate);
-  renderOrders(filtered);
-});
+    filterBtn.addEventListener('click', () => {
+      selectedDate = filterDateInput.value;
+      if (!selectedDate) {
+        alert('Please select a date to filter.');
+        return;
+      }
+      const filtered = filterOrdersByDate(selectedDate);
+      renderOrders(filtered);
+    });
 
-clearFilterBtn.addEventListener('click', () => {
-  filterDateInput.value = '';
-  selectedDate = null;
-  renderOrders(filteredOrders);
-});
-
-// Show today's orders when page loads
-window.addEventListener('DOMContentLoaded', () => {
-  const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-  const todayOrders = filterOrdersByDate(today);
-  renderOrders(todayOrders);
-
-  filterDateInput.value = today; // set date picker to today
-  selectedDate = today;
-});
+    clearFilterBtn.addEventListener('click', () => {
+      filterDateInput.value = '';
+      selectedDate = null;
+      renderOrders(filteredOrders);
+    });
 
     // Delete all completed orders of selected day
     deleteOrdersDayBtn.addEventListener('click', async () => {
@@ -793,138 +703,7 @@ window.addEventListener('DOMContentLoaded', () => {
       try {
         const snapshot = await get(ordersRef);
         const data = snapshot.val() || {};
-const menuRef = ref(db, 'menu');
-const menuContainer = document.getElementById('menu');
-const addMenuForm = document.getElementById('add-menu-form');
 
-function createMenuCard(key, item) {
-  const card = document.createElement('div');
-  card.className = 'menu-card';
-  card.innerHTML = `
-    <input type="text" class="name-input" value="${item.name}" aria-label="Menu item name" />
-    <input type="number" step="0.01" class="price-input" value="${item.price}" min="0" aria-label="Menu item price" />
-    <input type="text" class="category-input" value="${item.category}" aria-label="Menu item category" />
-    <div style="display:flex; justify-content:space-between;">
-      <button class="save-btn" aria-label="Save menu item changes">Save</button>
-      <button class="delete-btn" aria-label="Delete this menu item">Delete</button>
-    </div>
-  `;
-
-  const nameInput = card.querySelector('.name-input');
-  const priceInput = card.querySelector('.price-input');
-  const categoryInput = card.querySelector('.category-input');
-  const saveBtn = card.querySelector('.save-btn');
-  const deleteBtn = card.querySelector('.delete-btn');
-
-  saveBtn.addEventListener('click', async () => {
-    const newName = nameInput.value.trim();
-    const newPrice = parseFloat(priceInput.value);
-    const newCategory = categoryInput.value.trim();
-
-    console.log('=== SAVE DEBUG ===');
-    console.log('Key:', key);
-    console.log('New Name:', newName);
-    console.log('New Price:', newPrice);
-    console.log('New Category:', newCategory);
-
-    if (!newName || isNaN(newPrice) || newPrice < 0 || !newCategory) {
-      alert('Please fill in all fields correctly.');
-      return;
-    }
-
-    try {
-      saveBtn.disabled = true;
-      console.log('Calling update()...');
-      await update(ref(db, `menu/${key}`), {
-        name: newName,
-        price: newPrice,
-        category: newCategory
-      });
-      alert('Item updated.');
-    } catch (error) {
-      alert('Failed to update item.');
-      console.error('Update error:', error);
-    } finally {
-      saveBtn.disabled = false;
-      console.log('Reloading menu items...');
-      loadMenuItems();
-    }
-  });
-
-  deleteBtn.addEventListener('click', async () => {
-    if (!confirm('Are you sure you want to delete this menu item?')) return;
-    try {
-      deleteBtn.disabled = true;
-      console.log('Deleting item with key:', key);
-      await remove(ref(db, `menu/${key}`));
-      alert('Item deleted.');
-      loadMenuItems();
-    } catch (error) {
-      alert('Failed to delete item.');
-      console.error('Delete error:', error);
-    } finally {
-      deleteBtn.disabled = false;
-    }
-  });
-
-  return card;
-}
-
-async function loadMenuItems() {
-  console.log('Loading menu items...');
-  try {
-    const snapshot = await get(menuRef);
-    const data = snapshot.val() || {};
-    console.log('Menu data:', data);
-    menuContainer.innerHTML = '';
-
-    if (Object.keys(data).length === 0) {
-      menuContainer.innerHTML = '<p>No menu items found.</p>';
-      return;
-    }
-
-    Object.entries(data).forEach(([key, item]) => {
-      console.log('Creating card for:', key, item);
-      const card = createMenuCard(key, item);
-      menuContainer.appendChild(card);
-    });
-  } catch (err) {
-    menuContainer.innerHTML = '<p>Error loading menu items.</p>';
-    console.error('Error loading menu items:', err);
-  }
-}
-
-addMenuForm.addEventListener('submit', async e => {
-  e.preventDefault();
-  const name = document.getElementById('new-name').value.trim();
-  const price = parseFloat(document.getElementById('new-price').value);
-  const category = document.getElementById('new-category').value.trim();
-
-  console.log('=== ADD DEBUG ===');
-  console.log('Name:', name);
-  console.log('Price:', price);
-  console.log('Category:', category);
-
-  if (!name || isNaN(price) || price < 0 || !category) {
-    alert('Please enter valid data.');
-    return;
-  }
-
-  try {
-    const submitBtn = addMenuForm.querySelector('button[type="submit"]');
-    submitBtn.disabled = true;
-    console.log('Pushing new item...');
-    await push(menuRef, { name, price, category });
-    alert('New menu item added.');
-    addMenuForm.reset();
-    loadMenuItems();
-  } catch (err) {
-    alert('Failed to add new item.');
-    console.error('Add menu item error:', err);
-  } finally {
-    addMenuForm.querySelector('button[type="submit"]').disabled = false;
-  }
-});
         const updates = {};
         Object.entries(data).forEach(([key, order]) => {
           const orderDate = order.timestamp ? new Date(order.timestamp).toISOString().slice(0, 10) : '';
@@ -946,6 +725,7 @@ addMenuForm.addEventListener('submit', async e => {
         alert('Failed to delete orders.');
       }
     });
+    
 
     // ====== MENU MANAGEMENT SECTION LOGIC ======
 const menuRef = ref(db, 'menu');
@@ -983,24 +763,6 @@ function createMenuCard(key, item) {
     console.log('New Category:', newCategory);
 
     if (!newName || isNaN(newPrice) || newPrice < 0 || !newCategory) {
-      alert('Please fill in all fields correctly.');
-      return;
-    }
-
-    try {
-      saveBtn.disabled = true;
-      console.log('Calling update()...');
-      await update(ref(db, `menu/${key}`), {
-        name: newName,
-        price: newPrice,
-        category: newCategory
-      });
-      alert('Item updated.');
-    } catch (error) {
-      alert('Failed to update item.');
-      console.error('Update error:', error);
-    } finally {
-      saveBtn.disabled = false;
       console.log('Reloading menu items...');
       loadMenuItems();
     }
