@@ -123,7 +123,7 @@
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        if (user.email === "ajaya@menu.com") {
+        if (user.email === "Kholme@owner.com") {
           localStorage.setItem("role", "owner");
           window.location.href = "owner.html";
         } else {
