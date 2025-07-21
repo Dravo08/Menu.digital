@@ -84,7 +84,7 @@
 <body>
   <div class="login-wrapper">
     <div class="logo">
-      <img src="https://raw.githubusercontent.com/AjayDevgan1/Menu.digital/main/20250719_095724.jpg" alt="DRAVO" />
+      <img src="https://raw.githubusercontent.com/AjayDevgan1/Menu.digital/main/20250719_095724.jpg" alt="DRAVO Logo" />
     </div>
     <h2>Welcome to Dravo</h2>
     <p>Owner Panel Login</p>
@@ -126,17 +126,19 @@
         const userCredential = await signInWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
+        console.log("Login successful for:", user.email); // Debug log
+
         if (user.email.toLowerCase() === "kholme@owner.com") {
-  localStorage.setItem("role", "owner");
-  console.log("Redirecting to owner.html");
-  window.location.href = "owner.html";
-        }
+          localStorage.setItem("role", "owner");
+          console.log("Redirecting to owner.html...");
+          window.location.href = "./owner.html"; // Ensure this file exists
         } else {
           messageDiv.innerText = "Not authorized for owner panel.";
           await signOut(auth);
         }
       } catch (error) {
         messageDiv.innerText = "Login failed: " + error.message;
+        console.error(error);
       }
     });
   </script>
