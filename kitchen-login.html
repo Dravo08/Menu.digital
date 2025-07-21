@@ -100,7 +100,7 @@
         const user = userCredential.user;
 
         // ✅ Fixed: Compare email in lowercase to avoid case issues
-        if (user.email.toLowerCase() === "Kholme@menu.com") {
+        if (user.email.toLowerCase() === "kholme@menu.com") {
           localStorage.setItem("role", "kitchen");
           window.location.href = 'kitchen.html';
         } else {
