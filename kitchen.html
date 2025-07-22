@@ -115,7 +115,10 @@
   </style>
 </head>
 <body>
+  <button onclick="document.getElementById('orderBell').play()" style="position:fixed;top:10px;right:10px;z-index:999;background:#8bc34a;color:#fff;padding:6px 10px;border:none;border-radius:4px;">🔊 Enable Sound</button>
   <h1>👨‍🍳 Kitchen Dashboard</h1>
+<!-- 🔔 Bell sound -->
+<audio id="orderBell" src="https://www.soundjay.com/buttons/sounds/button-09.mp3" preload="auto"></audio>
   <button id="logout">Logout</button>
   <div id="orders"></div>
   <div id="history"></div>
@@ -161,6 +164,7 @@
     const ordersDiv = document.getElementById('orders');
     const historyDiv = document.getElementById('history');
     const logoutBtn = document.getElementById('logout');
+    const orderBell = document.getElementById('orderBell');
 
     logoutBtn.addEventListener('click', () => {
       signOut(auth).then(() => {
@@ -288,14 +292,27 @@
     const completedMap = {};
 
     onChildAdded(ordersRef, (snapshot) => {
-      const order = snapshot.val();
-      const key = snapshot.key;
-      ordersMap[key] = order;
-      if (currentView === 'orders') {
-        const card = createOrderCard(order, key, true);
-        ordersDiv.appendChild(card);
-        sortOrderCards(ordersDiv);
-      }
+  const order = snapshot.val();
+  const key = snapshot.key;
+  ordersMap[key] = order;
+
+  // 🔔 Play bell sound when a NEW order arrives
+  if (!order.notified) {
+    orderBell.play().catch((err) => {
+      console.warn('Bell sound blocked until user interacts:', err);
+    });
+
+    // Optional: mark as notified to avoid ringing again
+    update(ref(db, `orders/${key}`), { notified: true });
+  }
+
+  // 📦 Show order in UI
+  if (currentView === 'orders') {
+    const card = createOrderCard(order, key, true);
+    ordersDiv.appendChild(card);
+    sortOrderCards(ordersDiv);
+  }
+});
     });
 
     onChildChanged(ordersRef, (snapshot) => {
@@ -392,5 +409,6 @@
       sortOrderCards(historyDiv);
     }
   </script>
+  <audio id="orderBell" src="https://www.soundjay.com/buttons/sounds/button-09.mp3" preload="auto"></audio>
 </body>
 </html>
